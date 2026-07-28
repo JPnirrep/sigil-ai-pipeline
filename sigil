@@ -1,170 +1,303 @@
 #!/usr/bin/env python3
 """
-KLEIA-UP Book — Batch CLI
-sigil batch --input "*.docx" --format epub,pdf --output ./out
+KLEIA-UP Book — V2 Batch CLI
+sigil batch --input "*.docx" --format epub,pdf --parallel 4
 """
 
-import os, sys, json, time, glob, argparse
+import os, sys, json, time, glob, argparse, traceback
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 
-# Add poc dir to path
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_SCRIPT_DIR, "poc"))
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="KLEIA-UP Book — Pipeline batch de production EPUB + PDF print",
+        description="KLEIA-UP Book V2 — Production batch",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Exemples :
-  sigil batch --input "*.docx" --format epub,pdf
-  sigil batch -i docs/ -o dist/ -f epub --genre fiction
-  sigil batch --input "livre_*.docx" --json --parallel 4
-        """
     )
-    parser.add_argument("-i", "--input", required=True, help="Glob ou dossier de fichiers DOCX")
-    parser.add_argument("-o", "--output", default="./kleia-up-output", help="Dossier de sortie")
+    parser.add_argument("-i", "--input", required=True, help="Glob, dossier, ou fichier DOCX")
+    parser.add_argument("-o", "--output", default="./kleia-up-v2", help="Dossier de sortie")
     parser.add_argument("-f", "--format", nargs="+", default=["epub", "pdf"],
-                        choices=["epub", "pdf"], help="Formats de sortie")
+                        choices=["epub", "pdf"], help="Formats")
     parser.add_argument("-g", "--genre", choices=["auto", "fiction", "scifi", "fantasy", "nonfiction"],
-                        default="auto", help="Genre (auto = détection automatique)")
-    parser.add_argument("--parallel", type=int, default=1, help="Nombre de workers parallèles")
-    parser.add_argument("--json", action="store_true", help="Rapport JSON")
-    parser.add_argument("--no-clean", action="store_true", help="Ne pas nettoyer le dossier de sortie")
+                        default="auto", help="Genre")
+    parser.add_argument("--parallel", type=int, default=2, help="Workers parallèles")
+    parser.add_argument("--retry", type=int, default=2, help="Tentatives max par livre")
+    parser.add_argument("--no-report", action="store_true", help="Pas de rapport HTML")
+    parser.add_argument("--json", action="store_true", help="Rapport JSON seulement")
 
     args = parser.parse_args()
 
-    # Collect DOCX files
-    input_path = args.input
-    if os.path.isfile(input_path):
-        docx_files = [input_path]
-    elif os.path.isdir(input_path):
-        docx_files = sorted(glob.glob(os.path.join(input_path, "*.docx")))
+    # Collect files
+    if os.path.isfile(args.input):
+        docx_files = [os.path.abspath(args.input)]
+    elif os.path.isdir(args.input):
+        docx_files = sorted(glob.glob(os.path.join(args.input, "*.docx")))
     else:
-        docx_files = sorted(glob.glob(input_path))
+        docx_files = sorted(glob.glob(args.input))
 
     if not docx_files:
-        print(f"❌ Aucun fichier DOCX trouvé : {input_path}")
+        print(f"❌ Aucun DOCX : {args.input}")
         sys.exit(1)
 
-    # Setup output
-    output_dir = args.output
+    output_dir = os.path.abspath(args.output)
     os.makedirs(output_dir, exist_ok=True)
 
-    genre = args.genre if args.genre != "auto" else None
-    fmt = args.format
-    num_workers = args.parallel
-
     from kleia_up_book import run_pipeline
+    from kleia_up_book.validator import validate_book
+
+    print(f"\n{'═'*60}")
+    print(f"  KLEIA-UP V2 — Production batch")
+    print(f"{'═'*60}")
+    print(f"  DOCX     : {len(docx_files)} fichiers")
+    print(f"  Formats  : {', '.join(args.format)}")
+    print(f"  Workers  : {args.parallel}  |  Retry: {args.retry}")
+    print(f"  Sortie   : {output_dir}")
+    print(f"{'═'*60}\n")
 
     total_start = time.time()
-    all_results = []
-    errors = []
+    book_results = []
 
-    print(f"\n{'='*60}")
-    print(f"  KLEIA-UP Book — Batch Production")
-    print(f"{'='*60}")
-    print(f"  Fichiers : {len(docx_files)} DOCX")
-    print(f"  Formats  : {', '.join(fmt)}")
-    print(f"  Genre    : {args.genre}")
-    print(f"  Workers  : {num_workers}")
-    print(f"  Sortie   : {output_dir}")
-    print(f"{'='*60}\n")
+    def process_one(docx_path, attempt=0):
+        """Process a single book with retry."""
+        name = Path(docx_path).stem
+        book_dir = os.path.join(output_dir, name)
+        os.makedirs(book_dir, exist_ok=True)
 
-    if num_workers > 1 and len(docx_files) > 1:
-        # Parallel processing
-        from concurrent.futures import ThreadPoolExecutor, as_completed
+        try:
+            t0 = time.time()
+            result = run_pipeline(docx_path, book_dir,
+                                  genre=args.genre if args.genre != "auto" else None,
+                                  format=args.format)
+            elapsed = time.time() - t0
 
-        def process_single(docx_path):
-            try:
-                book_dir = os.path.join(output_dir, Path(docx_path).stem)
-                os.makedirs(book_dir, exist_ok=True)
-                start = time.time()
-                result = run_pipeline(docx_path, book_dir, genre=genre, format=fmt)
-                elapsed = time.time() - start
-                return (docx_path, result, elapsed, None)
-            except Exception as e:
-                return (docx_path, None, 0, str(e))
+            # Validate
+            epub_name = f"{name}.epub"
+            pdf_name = f"{name}.pdf" if "pdf" in args.format else None
+            quality = validate_book(book_dir, epub_name, pdf_name)
 
-        with ThreadPoolExecutor(max_workers=num_workers) as executor:
-            futures = {executor.submit(process_single, p): p for p in docx_files}
-            for i, future in enumerate(as_completed(futures), 1):
-                path, result, elapsed, error = future.result()
-                name = Path(path).stem
-                if error:
-                    print(f"  [{i}/{len(docx_files)}] ✗ {name:40s} {error}")
-                    errors.append({"file": path, "error": error})
-                else:
-                    print(f"  [{i}/{len(docx_files)}] ✓ {name:40s} {elapsed:.2f}s")
-                    all_results.append(result)
+            return {
+                "file": docx_path,
+                "name": name,
+                "success": True,
+                "time_s": round(elapsed, 2),
+                "result": result,
+                "quality": quality,
+            }
+        except Exception as e:
+            if attempt < args.retry:
+                print(f"     ⚠ Retry {attempt+1}/{args.retry}...")
+                return process_one(docx_path, attempt + 1)
+            return {
+                "file": docx_path,
+                "name": name,
+                "success": False,
+                "time_s": 0,
+                "error": str(e),
+                "traceback": traceback.format_exc(),
+                "result": None,
+                "quality": None,
+            }
+
+    # ── Run ──
+    if args.parallel > 1 and len(docx_files) > 1:
+        with ThreadPoolExecutor(max_workers=args.parallel) as ex:
+            fut = {ex.submit(process_one, p): p for p in docx_files}
+            for i, f in enumerate(as_completed(fut), 1):
+                br = f.result()
+                status = "✓" if br["success"] else "✗"
+                grade = br["quality"].get("grade", "?") if br.get("quality") else "?"
+                print(f"  [{i}/{len(docx_files)}] {status} {br['name']:38s} {br['time_s']:5.2f}s  [{grade}]")
+                book_results.append(br)
     else:
-        # Sequential processing
         for i, docx_path in enumerate(docx_files, 1):
-            name = Path(docx_path).stem
-            try:
-                book_dir = os.path.join(output_dir, name)
-                os.makedirs(book_dir, exist_ok=True)
-                start = time.time()
-                result = run_pipeline(docx_path, book_dir, genre=genre, format=fmt)
-                elapsed = time.time() - start
-                print(f"  [{i}/{len(docx_files)}] ✓ {name:40s} {elapsed:.2f}s")
-                all_results.append(result)
-            except Exception as e:
-                print(f"  [{i}/{len(docx_files)}] ✗ {name:40s} {e}")
-                errors.append({"file": str(docx_path), "error": str(e)})
+            br = process_one(docx_path)
+            status = "✓" if br["success"] else "✗"
+            grade = br["quality"].get("grade", "?") if br.get("quality") else "?"
+            print(f"  [{i}/{len(docx_files)}] {status} {br['name']:38s} {br['time_s']:5.2f}s  [{grade}]")
+            book_results.append(br)
 
     total_elapsed = time.time() - total_start
 
-    # Summary
-    print(f"\n{'='*60}")
-    print(f"  RÉSULTATS")
-    print(f"{'='*60}")
-    print(f"  ✓ Réussis : {len(all_results)}/{len(docx_files)}")
-    print(f"  ✗ Échecs  : {len(errors)}")
-    print(f"  ⏱  Temps  : {total_elapsed:.1f}s")
+    # Aggregate
+    successes = [b for b in book_results if b["success"]]
+    failures = [b for b in book_results if not b["success"]]
+    total_chapters = sum(b["result"]["book"]["chapters"] for b in successes if b.get("result"))
+    total_epub_kb = sum(
+        os.path.getsize(os.path.join(output_dir, b["name"], f"{b['name']}.epub")) / 1024
+        for b in successes
+    ) if any(b["success"] for b in successes) else 0
+    avg_quality = sum(b["quality"]["score"] for b in successes if b.get("quality")) / len(successes) if successes else 0
 
-    # Aggregate stats
-    if all_results:
-        total_chapters = sum(r["book"]["chapters"] for r in all_results)
-        total_epub_kb = sum(
-            os.path.getsize(r["paths"].get("epub", "")) / 1024
-            for r in all_results if "epub" in r.get("paths", {})
-        )
-        total_pdf_kb = sum(
-            os.path.getsize(r["paths"].get("pdf", "")) / 1024
-            for r in all_results if "pdf" in r.get("paths", {})
-        )
-        avg_time = total_elapsed / len(all_results) if all_results else 0
-        print(f"  📚 Chapitres: {total_chapters}")
-        print(f"  📦 EPUB: {total_epub_kb:.0f} KB  |  PDF: {total_pdf_kb:.0f} KB")
-        print(f"  ⏱  Moyenne: {avg_time:.2f}s/livre")
+    # Report data
+    report = {
+        "generated": datetime.now().isoformat(),
+        "summary": {
+            "total": len(docx_files),
+            "success": len(successes),
+            "failures": len(failures),
+            "total_time_s": round(total_elapsed, 2),
+            "avg_time_s": round(total_elapsed / len(docx_files), 2) if docx_files else 0,
+            "total_chapters": total_chapters,
+            "total_epub_kb": round(total_epub_kb, 1),
+            "avg_quality_score": round(avg_quality, 1),
+            "avg_quality_grade": "A" if avg_quality >= 90 else "B" if avg_quality >= 75 else "C",
+        },
+        "books": [],
+        "errors": [{"file": b["file"], "error": b.get("error", "?")} for b in failures],
+    }
 
-    if errors:
-        print(f"\n  ⚠ Détail des erreurs :")
-        for e in errors:
-            print(f"     - {e['file']}: {e['error']}")
-
-    print(f"{'='*60}\n")
-
-    # JSON report
-    if args.json:
-        report = {
-            "summary": {
-                "total": len(docx_files),
-                "success": len(all_results),
-                "failures": len(errors),
-                "total_time_s": round(total_elapsed, 2),
-            },
-            "books": all_results,
-            "errors": errors,
+    for b in book_results:
+        entry = {
+            "name": b["name"],
+            "success": b["success"],
+            "time_s": b["time_s"],
         }
-        report_path = os.path.join(output_dir, "kleia-up-report.json")
-        with open(report_path, "w", encoding="utf-8") as f:
-            json.dump(report, f, indent=2, default=str)
-        print(f"  📄 Rapport : {report_path}")
+        if b.get("quality"):
+            entry["quality"] = {
+                "score": b["quality"]["score"],
+                "grade": b["quality"]["grade"],
+                "epub_score": b["quality"]["epub_score"],
+                "pdf_score": b["quality"].get("pdf_score"),
+            }
+        if b.get("result"):
+            entry["book"] = {
+                "title": b["result"]["book"]["title"],
+                "author": b["result"]["book"]["author"],
+                "chapters": b["result"]["book"]["chapters"],
+                "genre": b["result"]["book"]["genre_detected"],
+                "theme": b["result"]["book"]["theme"],
+                "trim": b["result"]["book"]["trim"],
+                "files": {
+                    k: os.path.basename(v) for k, v in b["result"]["paths"].items()
+                },
+            }
+        if not b["success"]:
+            entry["error"] = b.get("error", "?")
 
-    sys.exit(1 if errors and not all_results else 0)
+        report["books"].append(entry)
+
+    # ── Print summary ──
+    print(f"\n{'═'*60}")
+    print(f"  RÉSULTATS")
+    print(f"{'═'*60}")
+    print(f"  ✓ {len(successes)}/{len(docx_files)} réussis  |  ✗ {len(failures)} échecs")
+    print(f"  ⏱  {total_elapsed:.1f}s  |  Moy. {report['summary']['avg_time_s']:.2f}s/livre")
+    print(f"  📚 {total_chapters} chapitres  |  📦 {report['summary']['total_epub_kb']:.0f} KB")
+    print(f"  🏆 Qualité moyenne: {report['summary']['avg_quality_score']}/100 ({report['summary']['avg_quality_grade']})")
+    if failures:
+        print(f"\n  ⚠ Échecs :")
+        for e in report["errors"]:
+            print(f"     - {Path(e['file']).name}: {e['error'][:80]}")
+
+    # ── Save JSON report ──
+    json_path = os.path.join(output_dir, "kleia-up-report.json")
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2, default=str, ensure_ascii=False)
+    print(f"\n  📄 Rapport JSON : {json_path}")
+
+    # ── HTML report ──
+    if not args.no_report:
+        _gen_html_report(report, output_dir)
+
+    sys.exit(1 if failures and not successes else 0)
+
+
+def _gen_html_report(report, output_dir):
+    """Generate standalone HTML report."""
+    s = report["summary"]
+
+    rows = ""
+    for b in report["books"]:
+        status = "✅" if b["success"] else "❌"
+        title = b.get("book", {}).get("title", b["name"])
+        author = b.get("book", {}).get("author", "?")
+        chapters = b.get("book", {}).get("chapters", "?")
+        genre = b.get("book", {}).get("genre", "?")
+        theme = b.get("book", {}).get("theme", "?")
+        grade = b.get("quality", {}).get("grade", "?") if b["success"] else "—"
+        score = b.get("quality", {}).get("score", "—") if b["success"] else "—"
+        time_s = f"{b['time_s']:.1f}s" if b["success"] else "—"
+        error = f'<span class="error">{b.get("error","")}</span>' if not b["success"] else ""
+
+        files_html = ""
+        if b.get("book", {}).get("files"):
+            for fmt, fn in b["book"]["files"].items():
+                fp = os.path.join(output_dir, b["name"], fn)
+                sz = os.path.getsize(fp)//1024 if os.path.exists(fp) else 0
+                files_html += f'<span class="file">{fmt.upper()} {sz}KB</span> '
+
+        rows += f"""<tr>
+            <td>{status}</td>
+            <td><strong>{title}</strong><br><small>{author}</small></td>
+            <td>{chapters}</td>
+            <td>{genre}</td>
+            <td>{theme}</td>
+            <td>{time_s}</td>
+            <td><span class="grade grade-{grade}">{grade}</span> <small>{score}/100</small></td>
+            <td>{files_html}</td>
+            <td>{error}</td>
+        </tr>"""
+
+    html = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<title>KLEIA-UP V2 — Rapport batch</title>
+<style>
+body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f8f9fa; color: #333; }}
+h1 {{ color: #1a1a2e; border-bottom: 2px solid #e94560; padding-bottom: 10px; }}
+.summary {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }}
+.stat {{ background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; }}
+.stat .num {{ font-size: 28px; font-weight: bold; color: #1a1a2e; }}
+.stat .label {{ font-size: 12px; color: #666; text-transform: uppercase; }}
+table {{ width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
+th {{ background: #1a1a2e; color: white; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; }}
+td {{ padding: 12px; border-bottom: 1px solid #eee; }}
+tr:hover {{ background: #f0f0f5; }}
+.grade {{ display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 14px; }}
+.grade-A {{ background: #d4edda; color: #155724; }}
+.grade-B {{ background: #cce5ff; color: #004085; }}
+.grade-C {{ background: #fff3cd; color: #856404; }}
+.grade-D {{ background: #f8d7da; color: #721c24; }}
+.file {{ display: inline-block; background: #e9ecef; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin: 1px; }}
+.error {{ color: #dc3545; font-size: 12px; }}
+.footer {{ margin-top: 30px; color: #999; font-size: 12px; text-align: center; }}
+</style>
+</head>
+<body>
+<h1>KLEIA-UP V2 — Rapport de production</h1>
+<p>Généré le {report['generated'][:10]} — {s['total']} livres traités en {s['total_time_s']}s</p>
+
+<div class="summary">
+  <div class="stat"><div class="num">{s['success']}/{s['total']}</div><div class="label">Réussis</div></div>
+  <div class="stat"><div class="num">{s['failures']}</div><div class="label">Échecs</div></div>
+  <div class="stat"><div class="num">{s['total_time_s']}s</div><div class="label">Temps total</div></div>
+  <div class="stat"><div class="num">{s['avg_time_s']}s</div><div class="label">Moy/livre</div></div>
+  <div class="stat"><div class="num">{s['total_epub_kb']}KB</div><div class="label">Volume EPUB</div></div>
+  <div class="stat"><div class="num">{s['avg_quality_score']}</div><div class="label">Qualité/100</div></div>
+</div>
+
+<table>
+<thead><tr>
+<th></th><th>Livre</th><th>Chap.</th><th>Genre</th><th>Thème</th><th>Temps</th><th>Qualité</th><th>Fichiers</th><th>Erreur</th>
+</tr></thead>
+<tbody>{rows}</tbody>
+</table>
+
+<div class="footer">
+KLEIA-UP Book v2 — Pipeline open-source EPUB + PDF print
+</div>
+</body>
+</html>"""
+
+    html_path = os.path.join(output_dir, "kleia-up-report.html")
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html)
+    print(f"  📄 Rapport HTML : {html_path}")
 
 
 if __name__ == "__main__":

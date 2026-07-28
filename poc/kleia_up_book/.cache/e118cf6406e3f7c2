@@ -1,0 +1,11 @@
+{
+  "accessibility": {
+    "conformsTo": "WCAG 2.1 AA",
+    "summary": "Ce livre est structuré en trois chapitres, avec une navigation hiérarchique et une possibilité d'adaptation du rendu visuel. Il ne présente aucun risque (flash, mouvement, son) pour les utilisateurs.",
+    "features": ["structuralNavigation", "displayTransformability"],
+    "hazards": ["none"],
+    "aria_landmarks": ["navigation", "main", "tableOfContents"],
+    "language": "fr",
+    "certifiedBy": "KLEIA-UP Book"
+  }
+}

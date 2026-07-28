@@ -1,0 +1,11 @@
+{
+  "accessibility": {
+    "conformsTo": "WCAG 2.1 AA",
+    "summary": "Ce livre numérique est conforme aux normes d'accessibilité WCAG 2.1 AA. Il offre une navigation structurée via la table des matières et une adaptation possible de l'affichage. Aucun danger identifié.",
+    "features": ["structuralNavigation", "displayTransformability"],
+    "hazards": ["none"],
+    "aria_landmarks": ["navigation", "main"],
+    "language": "fr",
+    "certifiedBy": "KLEIA-UP Book"
+  }
+}

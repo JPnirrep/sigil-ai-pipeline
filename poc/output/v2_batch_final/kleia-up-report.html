@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="utf-8"/>
+<title>KLEIA-UP V2 — Rapport batch</title>
+<style>
+body {font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:1200px;margin:0 auto;padding:20px;background:#f8f9fa;color:#333;}
+h1 {color:#1a1a2e;border-bottom:2px solid #e94560;padding-bottom:10px;}
+.summary {display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin:20px 0;}
+.stat {background:white;padding:15px;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.1);text-align:center;}
+.stat .num {font-size:28px;font-weight:bold;color:#1a1a2e;}
+.stat .label {font-size:12px;color:#666;text-transform:uppercase;margin-top:5px;}
+table {width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);}
+th {background:#1a1a2e;color:white;padding:12px;text-align:left;font-size:12px;text-transform:uppercase;}
+td {padding:12px;border-bottom:1px solid #eee;}
+tr:hover {background:#f0f0f5;}
+.grade {display:inline-block;padding:2px 8px;border-radius:4px;font-weight:bold;font-size:14px;}
+.grade-A {background:#d4edda;color:#155724;}
+.file {display:inline-block;background:#e9ecef;padding:2px 6px;border-radius:3px;font-size:11px;margin:1px;}
+.footer {margin-top:30px;color:#999;font-size:12px;text-align:center;}
+</style></head>
+<body>
+<h1>KLEIA-UP V2 — Rapport de production</h1>
+<p>2 livres traités avec thèmes IA</p>
+<div class="summary">
+<div class="stat"><div class="num">2/2</div><div class="label">Réussis</div></div>
+<div class="stat"><div class="num">6.2s</div><div class="label">Temps total</div></div>
+<div class="stat"><div class="num">3.1s</div><div class="label">Moy/livre</div></div>
+<div class="stat"><div class="num">19</div><div class="label">Chapitres</div></div>
+</div>
+<table>
+<thead><tr><th></th><th>Livre</th><th>Chap.</th><th>Genre</th><th>Theme IA</th><th>Temps</th><th>Qualite</th><th>Fichiers</th></tr></thead>
+<tbody>
+<tr><td>✅</td><td><strong>La Kabbale des Nombres</strong><br><small>Sepharial</small></td><td>16</td><td>nonfiction</td><td>Numéros Mystiques</td><td>3.5s</td><td><span class="grade grade-A">A</span></td><td><span class="file">EPUB 83KB</span> <span class="file">PDF 319KB</span></td></tr>
+<tr><td>✅</td><td><strong>Les Oubliés de Veridya</strong><br><small>Jean Perrin</small></td><td>3</td><td>scifi</td><td>Veridya Noir</td><td>2.7s</td><td><span class="grade grade-B">B</span></td><td><span class="file">EPUB 3KB</span> <span class="file">PDF 35KB</span></td></tr>
+</tbody>
+</table>
+<div class="footer">KLEIA-UP Book v2 — Pipeline open-source EPUB + PDF print piloté par IA</div>
+</body></html>

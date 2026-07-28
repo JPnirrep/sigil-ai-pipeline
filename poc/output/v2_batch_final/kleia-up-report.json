@@ -1,0 +1,60 @@
+{
+  "generated": "2026-07-28T21:23:16.172843",
+  "summary": {
+    "total": 2,
+    "success": 2,
+    "failures": 0,
+    "total_time_s": 6.2,
+    "avg_time_s": 3.1,
+    "total_chapters": 19
+  },
+  "books": [
+    {
+      "name": "kabala_sepharial",
+      "success": true,
+      "time_s": "?",
+      "book": {
+        "title": "kabala_sepharial",
+        "author": "?",
+        "chapters": "?",
+        "genre": "?",
+        "theme": "?",
+        "trim": "6×9in",
+        "files": {
+          "epub": "kabala_sepharial.epub",
+          "pdf": "kabala_sepharial.pdf"
+        }
+      },
+      "quality": {
+        "grade": "A",
+        "score": 95,
+        "epub_score": 90,
+        "pdf_score": 100
+      }
+    },
+    {
+      "name": "kdp_6x9_template",
+      "success": true,
+      "time_s": "?",
+      "book": {
+        "title": "kdp_6x9_template",
+        "author": "?",
+        "chapters": "?",
+        "genre": "?",
+        "theme": "?",
+        "trim": "6×9in",
+        "files": {
+          "epub": "kdp_6x9_template.epub",
+          "pdf": "kdp_6x9_template.pdf"
+        }
+      },
+      "quality": {
+        "grade": "A",
+        "score": 95,
+        "epub_score": 90,
+        "pdf_score": 100
+      }
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,28 @@
+{
+  "theme_name": "Numéros Mystiques",
+  "genre": "auto",
+  "epub": {
+    "body-font": "Georgia, 'Times New Roman', serif",
+    "heading-font": "Montserrat, 'Helvetica Neue', sans-serif",
+    "size": "1em",
+    "line-height": 1.5,
+    "color": "#2c2a2a"
+  },
+  "print": {
+    "body-font": "'Times New Roman', serif",
+    "heading-font": "'Helvetica', sans-serif",
+    "size": "11pt",
+    "line-height": 1.3,
+    "color": "#000"
+  },
+  "colors": {
+    "text": "#2c2a2a",
+    "paper": "#f5f0e8",
+    "accent": "#b8860b"
+  },
+  "style": {
+    "hyphenation": true,
+    "dropcaps": false,
+    "first-para-no-indent": true
+  }
+}

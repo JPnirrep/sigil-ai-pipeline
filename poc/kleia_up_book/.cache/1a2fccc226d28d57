@@ -1,0 +1,16 @@
+{
+  "recommendation": {
+    "style": "Mystic Academic",
+    "rationale": "Ce style allie une rigueur académique (nécessaire pour les tableaux numérologiques, diagrammes et notes) à une dimension mystique qui respecte la spiritualité du sujet. La police Garamond offre une lisibilité classique, tandis que Cinzel pour les titres évoque l'antique et le sacré.",
+    "body_font": "Garamond",
+    "heading_font": "Cinzel",
+    "font_size_pt": 11,
+    "line_height": 1.4,
+    "paper_color": "#F5F0E6",
+    "text_color": "#1A1A2E",
+    "accent_color": "#B8860B",
+    "special_treatment": "lettrines ornées pour début de chapitre, filets décoratifs entre sections, tableaux encadrés avec coins arrondis",
+    "target_audience": "chercheurs spirituels et étudiants de l'ésotérisme",
+    "vibe": "mystique sérieux révélateur"
+  }
+}

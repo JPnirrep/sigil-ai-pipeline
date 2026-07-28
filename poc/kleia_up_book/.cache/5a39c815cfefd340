@@ -1,0 +1,28 @@
+{
+  "theme_name": "Veridya Noir",
+  "genre": "auto",
+  "epub": {
+    "body-font": "Georgia, serif",
+    "heading-font": "Arial, sans-serif",
+    "size": "1em",
+    "line-height": 1.5,
+    "color": "#dcdcdc"
+  },
+  "print": {
+    "body-font": "\"Times New Roman\", serif",
+    "heading-font": "\"Helvetica\", sans-serif",
+    "size": "11pt",
+    "line-height": 1.3,
+    "color": "#000"
+  },
+  "colors": {
+    "text": "#dcdcdc",
+    "paper": "#1c1c1c",
+    "accent": "#c8a04d"
+  },
+  "style": {
+    "hyphenation": true,
+    "dropcaps": false,
+    "first-para-no-indent": true
+  }
+}
