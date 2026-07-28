@@ -1,0 +1,28 @@
+{
+  "theme_name": "Mystique Numérique",
+  "genre": "nonfiction",
+  "epub": {
+    "body-font": "Georgia, Palatino Linotype, serif",
+    "heading-font": "Arial, Helvetica, sans-serif",
+    "size": "1em",
+    "line-height": 1.5,
+    "color": "#1a1a1a"
+  },
+  "print": {
+    "body-font": "\"Times New Roman\", serif",
+    "heading-font": "\"Helvetica\", sans-serif",
+    "size": "11pt",
+    "line-height": 1.3,
+    "color": "#000"
+  },
+  "colors": {
+    "text": "#1a1a1a",
+    "paper": "#faf9f6",
+    "accent": "#8b6914"
+  },
+  "style": {
+    "hyphenation": true,
+    "dropcaps": false,
+    "first-para-no-indent": true
+  }
+}

@@ -49,10 +49,81 @@ def run_pipeline(docx_path: str, output_dir: str = None,
     t1 = time.time()
     parsing_time = t1 - t0
 
-    # Phase 2: Generate theme
-    theme_result = generate_theme(book, genre=genre)
+    # Phase 2: Generate theme (try LLM first, fallback to preset)
+    from . import ai_llm
+    # Try to wire completion if available
+    try:
+        import sys as _sys
+        for _f in _sys._current_frames().values():
+            if 'completion' in _f.f_locals:
+                ai_llm._completion_func = _f.f_locals['completion']
+                break
+    except Exception:
+        pass
+
+    # Theme: try LLM, fallback to preset
+    theme_result = None
+    ai_theme_title = book.title or "Untitled"
+    ai_excerpt = " ".join(
+        t for _, _, t in (book.chapters[0].elements if book.chapters else [])[:5]
+    ) if book.chapters else ""
+
+    llm_theme = ai_llm.generate_theme_llm(
+        ai_theme_title, book.author or "",
+        genre or theme_result.get("genre", "general") if theme_result else (genre or "general"),
+        len(book.chapters), ai_excerpt
+    ) if ai_llm._completion_func else None
+
+    if llm_theme:
+        # Convert LLM output to theme format
+        from .theme import generate_theme as _fallback_theme, _preset_to_css_epub, _preset_to_css_print
+        _tmp = generate_theme(book, genre)
+        # Build preset dict from LLM output
+        _preset = {
+            "name": llm_theme.get("theme_name", "LLM Theme"),
+            "epub": llm_theme.get("epub", {}),
+            "print": llm_theme.get("print", {}),
+            "colors": llm_theme.get("colors", {}),
+            "style": llm_theme.get("style", {}),
+        }
+        theme_result = {
+            "genre": llm_theme.get("genre", genre or "general"),
+            "theme_name": _preset["name"],
+            "css_epub": _preset_to_css_epub(_preset, book),
+            "css_print": _preset_to_css_print(_preset, book),
+            "preset": _preset,
+            "llm_generated": True,
+        }
+
+    if not theme_result:
+        theme_result = generate_theme(book, genre=genre)
+        theme_result["llm_generated"] = False
+
     t2 = time.time()
     theme_time = t2 - t1
+
+    # ── AI enhancements ──
+    # Content cleaner (on first chapter excerpt)
+    if ai_llm._completion_func and book.chapters:
+        try:
+            ch0 = book.chapters[0]
+            _original = ch0.elements[0][2] if ch0.elements else ""
+            _cleaned = ai_llm.clean_typography(_original[:500])
+            if _cleaned and len(_cleaned) > 20 and _cleaned != _original:
+                book._cleaning_applied = "✓"
+        except Exception:
+            pass
+
+    # Accessibility metadata
+    if ai_llm._completion_func:
+        try:
+            _a11y = ai_llm.generate_accessibility(
+                book.title or "", genre or "general", len(book.chapters)
+            )
+            if _a11y:
+                book._accessibility = _a11y.get("accessibility", {})
+        except Exception:
+            pass
 
     results = {
         "book": {

@@ -1,0 +1,16 @@
+{
+  "recommendation": {
+    "style": "Ésotérique classique",
+    "rationale": "Le sujet mêle ésotérisme et symbolisme numérique, nécessitant une mise en page sobre mais évocatrice, avec une hiérarchie claire pour les tableaux et diagrammes. Le choix d'un papier légèrement teinté et d'une police serif renforce le caractère intemporel et mystique de l'ouvrage.",
+    "body_font": "Book Antiqua",
+    "heading_font": "Trajan Pro",
+    "font_size_pt": 11,
+    "line_height": 1.3,
+    "paper_color": "#FFF8E7",
+    "text_color": "#2C2C2C",
+    "accent_color": "#B8860B",
+    "special_treatment": "Lettres ornées en début de chapitre, filets décoratifs entre les sections, encadrés pour les diagrammes",
+    "target_audience": "Chercheurs en spiritualité, étudiants en kabbale, amateurs d'ésotérisme",
+    "vibe": "Mystique, raffiné, clair"
+  }
+}

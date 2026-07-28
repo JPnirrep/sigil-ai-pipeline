@@ -1,0 +1,11 @@
+{
+  "accessibility": {
+    "conformsTo": "WCAG 2.1 AA",
+    "summary": "Ce livre numérique non fictionnel en 16 chapitres est accessible : navigation structurée et adaptation visuelle possibles, sans danger.",
+    "features": ["structuralNavigation", "displayTransformability"],
+    "hazards": ["none"],
+    "aria_landmarks": ["navigation", "main"],
+    "language": "fr",
+    "certifiedBy": "KLEIA-UP Book"
+  }
+}
