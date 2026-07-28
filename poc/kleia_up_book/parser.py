@@ -205,44 +205,52 @@ def render_xhtml(book: ParsedBook) -> str:
 
     # ── Front matter sections ──
     current_section = None
-    toc_done = False
-    intro_done = False
-    copyright_done = False
+    sections_created = set()
 
     for tag, cls, text in book.front_matter:
         ft = _classify_front(text)
 
-        # Close previous section
-        if ft == "toc-title" and not toc_done:
+        # TOC title — open TOC section (once)
+        if ft == "toc-title" and "toc" not in sections_created:
             if current_section: parts.append('</section>')
             parts.append('<section class="front-matter-toc">')
-            parts.append(f'<h2 class="toc-title">Table des Matières</h2>')
+            parts.append('<h2 class="toc-title">Table des Matières</h2>')
             current_section = "toc"
-            toc_done = True
+            sections_created.add("toc")
             continue
-        elif ft == "intro-title" and not intro_done:
+
+        # If we're in TOC: check if this is still a TOC entry
+        if current_section == "toc":
+            is_toc_entry = bool(re.match(r'^[IVXLCDM]+\.\s', text)) or \
+                           bool(re.match(r'^Introduction\s+\d+', text)) or \
+                           bool(re.match(r'^\d+\.\s', text))
+            if is_toc_entry:
+                attr = f' class="{cls}"' if cls else ""
+                parts.append(f'<{tag}{attr}>{_highlight_numbers(text)}</{tag}>')
+                continue
+            # Not a TOC entry: close TOC, then fall through to render this paragraph
+            parts.append('</section>')
+            current_section = None
+            # Fall through to generic rendering below
+
+        # Introduction / copyright (only when NOT in TOC)
+        if ft == "intro-title" and "intro" not in sections_created:
             if current_section: parts.append('</section>')
             parts.append('<section class="front-matter-intro">')
             parts.append('<h2 class="intro-title">Introduction</h2>')
             current_section = "intro"
-            intro_done = True
+            sections_created.add("intro")
             continue
-        elif ft == "copyright" and not copyright_done:
+
+        if ft == "copyright" and "copyright" not in sections_created:
             if current_section: parts.append('</section>')
             parts.append('<section class="front-matter-copyright">')
             current_section = "copyright"
-            copyright_done = True
+            sections_created.add("copyright")
 
-        # Render the paragraph with number highlighting
-        if current_section:
-            attr = f' class="{cls}"' if cls else ""
-            parts.append(f'<{tag}{attr}>{_highlight_numbers(text)}</{tag}>')
-        else:
-            attr = f' class="{cls}"' if cls else ""
-            parts.append(f'<{tag}{attr}>{_highlight_numbers(text)}</{tag}>')
-
-    if current_section:
-        parts.append('</section>')
+        # Generic: render with current section or standalone
+        attr = f' class="{cls}"' if cls else ""
+        parts.append(f'<{tag}{attr}>{_highlight_numbers(text)}</{tag}>')
 
     # ── Chapters ──
     for ch in book.chapters:
