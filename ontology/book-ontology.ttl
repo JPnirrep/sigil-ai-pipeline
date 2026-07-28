@@ -1,0 +1,791 @@
+###############################################################################
+#  KLEIA-UP Book Ontology
+#  ========================
+#  Ontologie neurosymbolique pour le pipeline d'édition KLEIA-UP Book.
+#  Trois domaines : BookContent (structure du livre),
+#                    PublishingConstraints (format KDP/print),
+#                    PipelinePhases (orchestration des plugins IA).
+#
+#  Standards : RDFS, OWL 2, SHACL
+#  Formats    : Turtle (.ttl)
+#  Usage      : PySHACL valide chaque action IA avant exécution.
+#
+#  Conventions de nommage :
+#    - Classes      : PascalCase
+#    - Propriétés   : camelCase
+#    - Individus    : kebab-case
+#    - SHACL shapes : PascalCase + Shape suffix
+###############################################################################
+
+@prefix :        <http://kleia-up.fr/ontology/book#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+###############################################################################
+#  MÉTADONNÉES DE L'ONTOLOGIE
+###############################################################################
+
+: rdf:type owl:Ontology ;
+  dcterms:title "KLEIA-UP Book Ontology" ;
+  dcterms:description """Ontologie formelle pour le pipeline d'édition
+    neurosymbolique KLEIA-UP Book. Définit les types de contenus éditoriaux,
+    les contraintes de publication (KDP/print) et l'orchestration des plugins
+    IA, afin que tout agent LLM opère dans un cadre logique validé par SHACL.""" ;
+  dcterms:created "2026-07-28"^^xsd:date ;
+  dcterms:creator "JP — KLEIA-UP" ;
+  dcterms:license "GPLv3" .
+
+###############################################################################
+# ═══════════════════════════════════════════════════════════════════════════
+#  DOMAINE 1 : BOOK CONTENT
+#  Types, relations et contraintes de la structure éditoriale.
+# ═══════════════════════════════════════════════════════════════════════════
+###############################################################################
+
+#### ———— CLASSES ————
+
+:DocumentComponent rdf:type owl:Class ;
+  rdfs:label "Document Component" ;
+  rdfs:comment "Classe racine de tout composant d'un livre. Tous les éléments de contenu en héritent." .
+
+:FrontMatter rdf:type owl:Class ;
+  rdfs:subClassOf :DocumentComponent ;
+  rdfs:label "Front Matter" ;
+  rdfs:comment "Éléments de préface : titre, copyright, dédicace, épigraphe, TOC, avant-propos." .
+
+:BodyMatter rdf:type owl:Class ;
+  rdfs:subClassOf :DocumentComponent ;
+  rdfs:label "Body Matter" ;
+  rdfs:comment "Corps principal du livre : chapitres, sections, contenus." .
+
+:BackMatter rdf:type owl:Class ;
+  rdfs:subClassOf :DocumentComponent ;
+  rdfs:label "Back Matter" ;
+  rdfs:comment "Éléments de postface : annexes, glossaire, index, bibliographie, colophon." .
+
+:Chapter rdf:type owl:Class ;
+  rdfs:subClassOf :BodyMatter ;
+  rdfs:label "Chapter" ;
+  rdfs:comment "Chapitre — unité structurelle principale du corps du livre. Contient des sections et paragraphes." .
+
+:Section rdf:type owl:Class ;
+  rdfs:subClassOf :BodyMatter ;
+  rdfs:label "Section" ;
+  rdfs:comment "Section ou sous-section au sein d'un chapitre." .
+
+:Paragraph rdf:type owl:Class ;
+  rdfs:subClassOf :DocumentComponent ;
+  rdfs:label "Paragraph" ;
+  rdfs:comment "Paragraphe de texte — unité de contenu atomique." .
+
+:FirstParagraph rdf:type owl:Class ;
+  rdfs:subClassOf :Paragraph ;
+  rdfs:label "First Paragraph" ;
+  rdfs:comment "Premier paragraphe d'un chapitre ou d'une section. Typographie spéciale (pas d'indentation, dropcap optionnel)." .
+
+:BlockQuote rdf:type owl:Class ;
+  rdfs:subClassOf :DocumentComponent ;
+  rdfs:label "Block Quote" ;
+  rdfs:comment "Citation longue — bloc visuellement distinct." .
+
+:Epigraph rdf:type owl:Class ;
+  rdfs:subClassOf :FrontMatter ;
+  rdfs:label "Epigraph" ;
+  rdfs:comment "Épigraphe — citation en ouverture de chapitre ou de livre." .
+
+:Figure rdf:type owl:Class ;
+  rdfs:subClassOf :DocumentComponent ;
+  rdfs:label "Figure" ;
+  rdfs:comment "Illustration, photo, diagramme — contient une image et une légende optionnelle." .
+
+:Table rdf:type owl:Class ;
+  rdfs:subClassOf :DocumentComponent ;
+  rdfs:label "Table" ;
+  rdfs:comment "Tableau — données structurées en lignes/colonnes." .
+
+:Footnote rdf:type owl:Class ;
+  rdfs:subClassOf :DocumentComponent ;
+  rdfs:label "Footnote" ;
+  rdfs:comment "Note de bas de page — liée à un point d'annotation dans le texte." .
+
+:BookTitle rdf:type owl:Class ;
+  rdfs:subClassOf :FrontMatter ;
+  rdfs:label "Book Title" ;
+  rdfs:comment "Page de titre du livre." .
+
+:CopyrightPage rdf:type owl:Class ;
+  rdfs:subClassOf :FrontMatter ;
+  rdfs:label "Copyright Page" ;
+  rdfs:comment "Page des mentions légales et crédits." .
+
+:Dedication rdf:type owl:Class ;
+  rdfs:subClassOf :FrontMatter ;
+  rdfs:label "Dedication" ;
+  rdfs:comment "Page de dédicace." .
+
+:TOC rdf:type owl:Class ;
+  rdfs:subClassOf :FrontMatter ;
+  rdfs:label "Table of Contents" ;
+  rdfs:comment "Table des matières — navigation structurelle du livre." .
+
+:Appendix rdf:type owl:Class ;
+  rdfs:subClassOf :BackMatter ;
+  rdfs:label "Appendix" ;
+  rdfs:comment "Annexe — contenu complémentaire en fin d'ouvrage." .
+
+:Glossary rdf:type owl:Class ;
+  rdfs:subClassOf :BackMatter ;
+  rdfs:label "Glossary" ;
+  rdfs:comment "Glossaire — définitions des termes spécialisés." .
+
+:Index rdf:type owl:Class ;
+  rdfs:subClassOf :BackMatter ;
+  rdfs:label "Index" ;
+  rdfs:comment "Index alphabétique des notions et noms propres." .
+
+:Bibliography rdf:type owl:Class ;
+  rdfs:subClassOf :BackMatter ;
+  rdfs:label "Bibliography" ;
+  rdfs:comment "Bibliographie et références." .
+
+:BlankPage rdf:type owl:Class ;
+  rdfs:subClassOf :DocumentComponent ;
+  rdfs:label "Blank Page" ;
+  rdfs:comment "Page blanche volontaire (verso de fin de partie). Aucun contenu textuel." .
+
+#### ———— PROPRIÉTÉS OBJET ————
+
+:contains rdf:type owl:ObjectProperty ;
+  rdfs:label "contains" ;
+  rdfs:comment "Relation de contenance entre composants (chapitre → section, section → paragraphe)." ;
+  rdfs:domain :DocumentComponent ;
+  rdfs:range :DocumentComponent .
+
+:precedes rdf:type owl:ObjectProperty ;
+  rdfs:label "precedes" ;
+  rdfs:comment "Ordre séquentiel dans l'axe de lecture du livre." ;
+  rdfs:domain :DocumentComponent ;
+  rdfs:range :DocumentComponent .
+
+:hasPart rdf:type owl:ObjectProperty ;
+  rdfs:subPropertyOf :contains ;
+  rdfs:label "has part" ;
+  rdfs:comment "Relation composite : un chapitre a des sections comme parties." .
+
+:isPartOf rdf:type owl:ObjectProperty ;
+  rdfs:label "is part of" ;
+  rdfs:comment "Relation inverse de hasPart." .
+
+:references rdf:type owl:ObjectProperty ;
+  rdfs:label "references" ;
+  rdfs:comment "Référence d'un composant vers un autre (ex: note de bas de page → ancre)." .
+
+#### ———— PROPRIÉTÉS DE DONNÉES ————
+
+:hasTitle rdf:type owl:DatatypeProperty ;
+  rdfs:label "has title" ;
+  rdfs:comment "Titre textuel d'un composant." ;
+  rdfs:domain :DocumentComponent ;
+  rdfs:range xsd:string .
+
+:hasIdentifier rdf:type owl:DatatypeProperty ;
+  rdfs:label "has identifier" ;
+  rdfs:comment "Identifiant unique (ID de paragraphe, ancre)." ;
+  rdfs:domain :DocumentComponent ;
+  rdfs:range xsd:string .
+
+:content rdf:type owl:DatatypeProperty ;
+  rdfs:label "content" ;
+  rdfs:comment "Contenu textuel brut d'un paragraphe, titre ou bloc." ;
+  rdfs:domain [ rdf:type owl:Class ;
+    owl:unionOf (:Paragraph :BlockQuote :Epigraph :BookTitle)
+  ] ;
+  rdfs:range xsd:string .
+
+:language rdf:type owl:DatatypeProperty ;
+  rdfs:label "language" ;
+  rdfs:comment "Code langue ISO 639-1 du contenu." ;
+  rdfs:domain :DocumentComponent ;
+  rdfs:range xsd:language .
+
+:ordinal rdf:type owl:DatatypeProperty ;
+  rdfs:label "ordinal" ;
+  rdfs:comment "Position ordinale dans la séquence (numéro de chapitre, page)." ;
+  rdfs:domain :DocumentComponent ;
+  rdfs:range xsd:integer .
+
+:fontSize rdf:type owl:DatatypeProperty ;
+  rdfs:label "font size" ;
+  rdfs:comment "Taille de police en points." ;
+  rdfs:range xsd:decimal .
+
+:lineHeight rdf:type owl:DatatypeProperty ;
+  rdfs:label "line height" ;
+  rdfs:comment "Interligne (ratio)." ;
+  rdfs:range xsd:decimal .
+
+:textIndent rdf:type owl:DatatypeProperty ;
+  rdfs:label "text indent" ;
+  rdfs:comment "Indentation de première ligne (em ou inches)." ;
+  rdfs:range xsd:string .
+
+
+###############################################################################
+# ═══════════════════════════════════════════════════════════════════════════
+#  DOMAINE 2 : PUBLISHING CONSTRAINTS
+#  Formats, marges, bleed, polices — contraintes KDP et print.
+# ═══════════════════════════════════════════════════════════════════════════
+###############################################################################
+
+#### ———— CLASSES ————
+
+:Format rdf:type owl:Class ;
+  rdfs:label "Format" ;
+  rdfs:comment "Format de publication : numérique (EPUB) ou imprimé (PDF)." .
+
+:DigitalFormat rdf:type owl:Class ;
+  rdfs:subClassOf :Format ;
+  rdfs:label "Digital Format" ;
+  rdfs:comment "Format numérique reflowable (EPUB 3)." .
+
+:PrintFormat rdf:type owl:Class ;
+  rdfs:subClassOf :Format ;
+  rdfs:label "Print Format" ;
+  rdfs:comment "Format imprimé (PDF print). Contient les contraintes physiques KDP." .
+
+:CSSTheme rdf:type owl:Class ;
+  rdfs:label "CSS Theme" ;
+  rdfs:comment "Thème CSS complet incluant les variantes EPUB et Print." .
+
+:FontPair rdf:type owl:Class ;
+  rdfs:label "Font Pair" ;
+  rdfs:comment "Paire typographique : police body + police titrage." .
+
+:ColorPalette rdf:type owl:Class ;
+  rdfs:label "Color Palette" ;
+  rdfs:comment "Palette de couleurs : texte, fond, accent." .
+
+#### ———— INDIVIDUS ————
+
+:kdp-5x8 rdf:type :PrintFormat ;
+  rdfs:label "5×8" ;
+  :trimWidth 5.0 ; :trimHeight 8.0 ;
+  :bleed 0.0 ; :gutterMargin 0.75 ;
+  :marginTop 0.75 ; :marginBottom 0.85 ;
+  :maxWidth 312 .    # pages (KDP limit small format)
+
+:kdp-5.5x8.5 rdf:type :PrintFormat ;
+  rdfs:label "5.5×8.5" ;
+  :trimWidth 5.5 ; :trimHeight 8.5 ;
+  :bleed 0.0 ; :gutterMargin 0.75 ;
+  :marginTop 0.75 ; :marginBottom 0.85 ;
+  :maxWidth 480 .
+
+:kdp-6x9 rdf:type :PrintFormat ;
+  rdfs:label "6×9" ;
+  :trimWidth 6.0 ; :trimHeight 9.0 ;
+  :bleed 0.125 ; :gutterMargin 0.9 ;
+  :marginTop 0.75 ; :marginBottom 0.85 ;
+  :maxWidth 828 .
+
+:kdp-8.5x11 rdf:type :PrintFormat ;
+  rdfs:label "8.5×11" ;
+  :trimWidth 8.5 ; :trimHeight 11.0 ;
+  :bleed 0.125 ; :gutterMargin 0.9 ;
+  :marginTop 0.75 ; :marginBottom 0.85 ;
+  :maxWidth 828 .
+
+:epub-reflowable rdf:type :DigitalFormat ;
+  rdfs:label "EPUB 3 Reflowable" .
+
+#### ———— PROPRIÉTÉS DE DONNÉES ————
+
+:trimWidth rdf:type owl:DatatypeProperty ;
+  rdfs:label "trim width" ;
+  rdfs:comment "Largeur de découpe en inches." ;
+  rdfs:domain :PrintFormat ;
+  rdfs:range xsd:decimal .
+
+:trimHeight rdf:type owl:DatatypeProperty ;
+  rdfs:label "trim height" ;
+  rdfs:comment "Hauteur de découpe en inches." ;
+  rdfs:domain :PrintFormat ;
+  rdfs:range xsd:decimal .
+
+:bleed rdf:type owl:DatatypeProperty ;
+  rdfs:label "bleed" ;
+  rdfs:comment "Débordement d'impression en inches (0.125 avec bleed, 0 sans)." ;
+  rdfs:domain :PrintFormat ;
+  rdfs:range xsd:decimal .
+
+:gutterMargin rdf:type owl:DatatypeProperty ;
+  rdfs:label "gutter margin" ;
+  rdfs:comment "Marge de reliure intérieure en inches." ;
+  rdfs:domain :PrintFormat ;
+  rdfs:range xsd:decimal .
+
+:marginTop rdf:type owl:DatatypeProperty ;
+  rdfs:label "margin top" ;
+  rdfs:domain :PrintFormat ;
+  rdfs:range xsd:decimal .
+
+:marginBottom rdf:type owl:DatatypeProperty ;
+  rdfs:label "margin bottom" ;
+  rdfs:domain :PrintFormat ;
+  rdfs:range xsd:decimal .
+
+:maxWidth rdf:type owl:DatatypeProperty ;
+  rdfs:label "max width" ;
+  rdfs:comment "Nombre de pages maximal pour ce format chez KDP." ;
+  rdfs:domain :PrintFormat ;
+  rdfs:range xsd:integer .
+
+:bodyFont rdf:type owl:DatatypeProperty ;
+  rdfs:label "body font" ;
+  rdfs:comment "Police pour le texte courant (serif recommandé pour print)." ;
+  rdfs:range xsd:string .
+
+:headingFont rdf:type owl:DatatypeProperty ;
+  rdfs:label "heading font" ;
+  rdfs:comment "Police pour les titres (sans-serif recommandé)." ;
+  rdfs:range xsd:string .
+
+:fontWeights rdf:type owl:DatatypeProperty ;
+  rdfs:label "font weights" ;
+  rdfs:comment "Poids disponibles (ex: 400, 700)." ;
+  rdfs:range xsd:string .
+
+:textColor rdf:type owl:DatatypeProperty ;
+  rdfs:label "text color" ;
+  rdfs:comment "Couleur du texte en hexadécimal." ;
+  rdfs:range xsd:string .
+
+:backgroundColor rdf:type owl:DatatypeProperty ;
+  rdfs:label "background color" ;
+  rdfs:comment "Couleur de fond du papier." ;
+  rdfs:range xsd:string .
+
+:accentColor rdf:type owl:DatatypeProperty ;
+  rdfs:label "accent color" ;
+  rdfs:comment "Couleur d'accentuation (filets, ornements, lettrines)." ;
+  rdfs:range xsd:string .
+
+:hasThemeForFormat rdf:type owl:ObjectProperty ;
+  rdfs:label "has theme for format" ;
+  rdfs:comment "Un thème CSS a une variante par format." ;
+  rdfs:domain :CSSTheme ;
+  rdfs:range :Format .
+
+#### ———— RELATIONS DES THÈMES ————
+
+:usesFontPair rdf:type owl:ObjectProperty ;
+  rdfs:label "uses font pair" ;
+  rdfs:comment "Un thème utilise une paire typographique." ;
+  rdfs:domain :CSSTheme ;
+  rdfs:range :FontPair .
+
+:usesColorPalette rdf:type owl:ObjectProperty ;
+  rdfs:label "uses color palette" ;
+  rdfs:comment "Un thème utilise une palette de couleurs." ;
+  rdfs:domain :CSSTheme ;
+  rdfs:range :ColorPalette .
+
+:compatibleWithGenre rdf:type owl:ObjectProperty ;
+  rdfs:label "compatible with genre" ;
+  rdfs:comment "Un thème ou format est compatible avec un ou plusieurs genres littéraires." ;
+  rdfs:domain [ rdf:type owl:Class ;
+    owl:unionOf (:CSSTheme :FontPair :Format)
+  ] ;
+  rdfs:range :Genre .
+
+#### ———— GENRES LITTÉRAIRES (SKOS taxonomy) ————
+
+:Genre rdf:type owl:Class ;
+  rdfs:label "Genre" ;
+  rdfs:comment "Genre littéraire — taxonomie pour le design advisor." .
+
+:fiction rdf:type :Genre ; skos:prefLabel "Fiction" .
+:non-fiction rdf:type :Genre ; skos:prefLabel "Non-Fiction" .
+:literary rdf:type :Genre ; skos:prefLabel "Literary Fiction" .
+:scifi rdf:type :Genre ; skos:prefLabel "Science-Fiction" .
+:fantasy rdf:type :Genre ; skos:prefLabel "Fantasy" .
+:mystery rdf:type :Genre ; skos:prefLabel "Mystery / Thriller" .
+:romance rdf:type :Genre ; skos:prefLabel "Romance" .
+:historical rdf:type :Genre ; skos:prefLabel "Historical" .
+:technical rdf:type :Genre ; skos:prefLabel "Technical / Academic" .
+:poetry rdf:type :Genre ; skos:prefLabel "Poetry" .
+:children rdf:type :Genre ; skos:prefLabel "Children's Books" .
+:self-help rdf:type :Genre ; skos:prefLabel "Self-Help / Personal Development" .
+:essay rdf:type :Genre ; skos:prefLabel "Essay / Opinion" .
+
+
+###############################################################################
+# ═══════════════════════════════════════════════════════════════════════════
+#  DOMAINE 3 : PIPELINE PHASES
+#  Orchestration des plugins, phases, types d'entrée/sortie.
+# ═══════════════════════════════════════════════════════════════════════════
+###############################################################################
+
+#### ———— CLASSES ————
+
+:Plugin rdf:type owl:Class ;
+  rdfs:label "Plugin" ;
+  rdfs:comment "Plugin du pipeline Sigil. Transforme une entrée en sortie via un type précis." .
+
+:InputPlugin rdf:type owl:Class ;
+  rdfs:subClassOf :Plugin ;
+  rdfs:label "Input Plugin" ;
+  rdfs:comment "Plugin d'import : DOCX/EPUB → contenu éditable dans Sigil." .
+
+:OutputPlugin rdf:type owl:Class ;
+  rdfs:subClassOf :Plugin ;
+  rdfs:label "Output Plugin" ;
+  rdfs:comment "Plugin d'export : contenu Sigil → EPUB/PDF final." .
+
+:EditPlugin rdf:type owl:Class ;
+  rdfs:subClassOf :Plugin ;
+  rdfs:label "Edit Plugin" ;
+  rdfs:comment "Plugin d'édition : opère sur l'EPUB ouvert (nettoyage, thème, validation)." .
+
+:AiPlugin rdf:type owl:Class ;
+  rdfs:subClassOf :EditPlugin ;
+  rdfs:label "AI Plugin" ;
+  rdfs:comment "Plugin utilisant un LLM — soumis à validation ontologique avant application." .
+
+:Phase rdf:type owl:Class ;
+  rdfs:label "Phase" ;
+  rdfs:comment "Phase du pipeline : séquence ordonnée de plugins." .
+
+:Pipeline rdf:type owl:Class ;
+  rdfs:label "Pipeline" ;
+  rdfs:comment "Pipeline complet d'édition : séquence de phases." .
+
+:PluginType rdf:type owl:Class ;
+  rdfs:label "Plugin Type" ;
+  rdfs:comment "Type de fichier d'entrée/sortie pour un plugin." .
+
+#### ———— PLUGIN TYPES (INDIVIDUS) ————
+
+:type-docx rdf:type :PluginType .
+:type-epub rdf:type :PluginType .
+:type-css rdf:type :PluginType .
+:type-html rdf:type :PluginType .
+:type-image rdf:type :PluginType .
+:type-pdf rdf:type :PluginType .
+
+#### ———— PLUGINS DU PROJET (INDIVIDUS) ————
+
+:TemplateKDP-Import rdf:type :InputPlugin ;
+  rdfs:label "TemplateKDP-Import" ;
+  :hasInputType :type-docx ;
+  :hasOutputType :type-epub .
+
+:AI-Content-Cleaner rdf:type :AiPlugin ;
+  rdfs:label "AI-Content-Cleaner" ;
+  :hasInputType :type-html ;
+  :hasOutputType :type-html .
+
+:AI-Theme-Generator rdf:type :AiPlugin ;
+  rdfs:label "AI-Theme-Generator" ;
+  :hasInputType :type-css ;
+  :hasOutputType :type-css .
+
+:AI-Design-Advisor rdf:type :AiPlugin ;
+  rdfs:label "AI-Design-Advisor" ;
+  :hasInputType :type-html ;
+  :hasOutputType :type-css .
+
+:AI-Accessibility rdf:type :AiPlugin ;
+  rdfs:label "AI-Accessibility" ;
+  :hasInputType :type-html ;
+  :hasOutputType :type-html .
+
+:AI-Translation-Bridge rdf:type :AiPlugin ;
+  rdfs:label "AI-Translation-Bridge" ;
+  :hasInputType :type-html ;
+  :hasOutputType :type-html .
+
+:PrintPDF-Exporter rdf:type :OutputPlugin ;
+  rdfs:label "PrintPDF-Exporter" ;
+  :hasInputType :type-epub ;
+  :hasOutputType :type-pdf .
+
+:ValidateOntology rdf:type :EditPlugin ;
+  rdfs:label "Validate Ontology" ;
+  :hasInputType :type-html ;
+  :hasOutputType :type-html .
+
+#### ———— PHASES (INDIVIDUS) ————
+
+:phase-import rdf:type :Phase ;
+  rdfs:label "Phase 1: Import" .
+
+:phase-editing rdf:type :Phase ;
+  rdfs:label "Phase 2: AI Editing" .
+
+:phase-export rdf:type :Phase ;
+  rdfs:label "Phase 3: Export" .
+
+#### ———— ORDRE DES PHASES ————
+
+:phase-import :precedes :phase-editing .
+:phase-editing :precedes :phase-export .
+
+#### ———— PLUGINS DANS CHAQUE PHASE ————
+
+:phase-import :contains :TemplateKDP-Import .
+
+:phase-editing :contains :AI-Content-Cleaner ;
+  :contains :AI-Theme-Generator ;
+  :contains :AI-Design-Advisor ;
+  :contains :AI-Accessibility ;
+  :contains :AI-Translation-Bridge ;
+  :contains :ValidateOntology .
+
+:phase-export :contains :PrintPDF-Exporter .
+
+#### ———— PROPRIÉTÉS DE PLUGIN ————
+
+:hasInputType rdf:type owl:ObjectProperty ;
+  rdfs:label "has input type" ;
+  rdfs:comment "Type de fichier en entrée du plugin." ;
+  rdfs:domain :Plugin ;
+  rdfs:range :PluginType .
+
+:hasOutputType rdf:type owl:ObjectProperty ;
+  rdfs:label "has output type" ;
+  rdfs:comment "Type de fichier en sortie du plugin." ;
+  rdfs:domain :Plugin ;
+  rdfs:range :PluginType .
+
+:dependsOn rdf:type owl:ObjectProperty ;
+  rdfs:label "depends on" ;
+  rdfs:comment "Un plugin dépend d'un autre (ex: PrintPDF-Exporter dépend de AI-Theme-Generator)." ;
+  rdfs:domain :Plugin ;
+  rdfs:range :Plugin .
+
+:producesFormat rdf:type owl:ObjectProperty ;
+  rdfs:label "produces format" ;
+  rdfs:comment "Un plugin Output produit un Format de publication." ;
+  rdfs:domain :OutputPlugin ;
+  rdfs:range :Format .
+
+#### ———— DÉPENDANCES ENTRE PLUGINS ————
+
+:PrintPDF-Exporter :dependsOn :AI-Theme-Generator .
+:PrintPDF-Exporter :dependsOn :AI-Content-Cleaner .
+:AI-Theme-Generator :dependsOn :TemplateKDP-Import .
+:AI-Design-Advisor :dependsOn :TemplateKDP-Import .
+:AI-Content-Cleaner :dependsOn :TemplateKDP-Import .
+
+
+###############################################################################
+# ═══════════════════════════════════════════════════════════════════════════
+#  SHACL SHAPES — RÈGLES DE VALIDATION
+#  Chaque shape définit une contrainte applicable par PySHACL.
+# ═══════════════════════════════════════════════════════════════════════════
+###############################################################################
+
+#### ———— SHAPE : STRUCTURE DE CHAPITRE ————
+
+:ChapterShape a sh:NodeShape ;
+  sh:targetClass :Chapter ;
+  rdfs:label "Chapter Structure" ;
+  rdfs:comment "Un chapitre doit avoir exactement un titre non vide et au moins un paragraphe." ;
+
+  sh:property [
+    sh:path :hasTitle ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:minLength 1 ;
+    sh:severity sh:Violation ;
+    sh:message "Un chapitre doit avoir exactement un titre non vide." ;
+  ] ;
+
+  sh:property [
+    sh:path :contains ;
+    sh:minCount 1 ;
+    sh:class :Paragraph ;
+    sh:severity sh:Violation ;
+    sh:message "Un chapitre doit contenir au moins un paragraphe." ;
+  ] .
+
+#### ———— SHAPE : PARAGRAPHE ————
+
+:ParagraphShape a sh:NodeShape ;
+  sh:targetClass :Paragraph ;
+  rdfs:label "Paragraph Content" ;
+  rdfs:comment "Un paragraphe ne peut pas être vide." ;
+
+  sh:property [
+    sh:path :content ;
+    sh:minLength 1 ;
+    sh:severity sh:Violation ;
+    sh:message "Un paragraphe ne peut pas être vide." ;
+  ] .
+
+#### ———— SHAPE : PREMIER PARAGRAPHE ————
+
+:FirstParagraphShape a sh:NodeShape ;
+  sh:targetClass :FirstParagraph ;
+  rdfs:label "First Paragraph Rules" ;
+  rdfs:comment "Le premier paragraphe n'a pas d'indentation. Dropcap optionnel selon genre." ;
+
+  sh:property [
+    sh:path :textIndent ;
+    sh:equals "0"^^xsd:string ;
+    sh:severity sh:Violation ;
+    sh:message "Le premier paragraphe ne doit pas avoir d'indentation." ;
+  ] ;
+
+  sh:property [
+    sh:path :ordinal ;
+    sh:equals 1 ;
+    sh:severity sh:Warning ;
+    sh:message "Un premier paragraphe doit avoir ordinal = 1 dans son conteneur." ;
+  ] .
+
+#### ———— SHAPE : FIGURE ————
+
+:FigureShape a sh:NodeShape ;
+  sh:targetClass :Figure ;
+  rdfs:label "Figure Requirements" ;
+  rdfs:comment "Une figure doit avoir au moins un alt text (accessibilité)." ;
+
+  sh:property [
+    sh:path :hasTitle ;
+    sh:minCount 1 ;
+    sh:severity sh:Violation ;
+    sh:message "Une figure doit avoir un titre/légende." ;
+  ] .
+
+#### ———— SHAPE : FORMAT D'IMPRESSION ————
+
+:PrintFormatShape a sh:NodeShape ;
+  sh:targetClass :PrintFormat ;
+  rdfs:label "Print Format Validity" ;
+  rdfs:comment "Les formats d'impression doivent respecter les contraintes KDP." ;
+
+  sh:property [
+    sh:path :trimWidth ;
+    sh:minInclusive 4.0 ;
+    sh:maxInclusive 8.5 ;
+    sh:severity sh:Violation ;
+    sh:message "La largeur de découpe doit être entre 4 et 8.5 pouces (standard KDP)." ;
+  ] ;
+
+  sh:property [
+    sh:path :trimHeight ;
+    sh:minInclusive 6.0 ;
+    sh:maxInclusive 11.0 ;
+    sh:severity sh:Violation ;
+    sh:message "La hauteur de découpe doit être entre 6 et 11 pouces (standard KDP)." ;
+  ] ;
+
+  sh:property [
+    sh:path :bleed ;
+    sh:in ( 0.0 0.125 ) ;
+    sh:severity sh:Violation ;
+    sh:message "Le bleed doit être 0.0 (sans) ou 0.125 (avec)." ;
+  ] ;
+
+  sh:property [
+    sh:path :gutterMargin ;
+    sh:minInclusive 0.5 ;
+    sh:maxInclusive 1.5 ;
+    sh:severity sh:Violation ;
+    sh:message "La marge de reliure doit être entre 0.5 et 1.5 pouces." ;
+  ] .
+
+#### ———— SHAPE : PAGE DE GARDE ————
+
+:BookTitleShape a sh:NodeShape ;
+  sh:targetClass :BookTitle ;
+  rdfs:label "Book Title Page" ;
+  rdfs:comment "La page de titre doit avoir un titre, un sous-titre optionnel, et un auteur." ;
+
+  sh:property [
+    sh:path :hasTitle ;
+    sh:minCount 1 ;
+    sh:severity sh:Violation ;
+    sh:message "La page de titre doit avoir un titre." ;
+  ] .
+
+#### ———— SHAPE : THÈME CSS  ————
+
+:CSSThemeShape a sh:NodeShape ;
+  sh:targetClass :CSSTheme ;
+  rdfs:label "CSS Theme Completeness" ;
+  rdfs:comment "Un thème CSS doit inclure les 2 variantes (EPUB + Print)." ;
+
+  sh:property [
+    sh:path :hasThemeForFormat ;
+    sh:minCount 2 ;
+    sh:severity sh:Violation ;
+    sh:message "Un thème CSS doit avoir au moins deux formats : EPUB et Print." ;
+  ] .
+
+#### ———— SHAPE : PIPELINE INTEGRITY ————
+
+:PipelineOrderShape a sh:NodeShape ;
+  sh:targetClass :Phase ;
+  rdfs:label "Pipeline Phase Order" ;
+  rdfs:comment "L'ordre des phases du pipeline est fixe : Import → Editing → Export." ;
+
+  sh:property [
+    sh:path :contains ;
+    sh:minCount 1 ;
+    sh:severity sh:Violation ;
+    sh:message "Une phase doit contenir au moins un plugin." ;
+  ] .
+
+:PluginDependencyShape a sh:NodeShape ;
+  sh:targetNode :PrintPDF-Exporter ;
+  rdfs:label "Plugin Dependency" ;
+  rdfs:comment "PrintPDF-Exporter dépend du thème et du nettoyage." ;
+
+  sh:property [
+    sh:path :dependsOn ;
+    sh:minCount 2 ;
+    sh:severity sh:Violation ;
+    sh:message "PrintPDF-Exporter doit dépendre d'au moins AI-Theme-Generator." ;
+  ] .
+
+:OutputPluginShape a sh:NodeShape ;
+  sh:targetClass :OutputPlugin ;
+  rdfs:label "Output Plugin Constraint" ;
+  rdfs:comment "Un plugin Output ne produit jamais de DOCX." ;
+
+  sh:property [
+    sh:path :hasOutputType ;
+    sh:notEquals :type-docx ;
+    sh:severity sh:Warning ;
+    sh:message "Un plugin Output ne devrait pas produire de DOCX." ;
+  ] .
+
+
+###############################################################################
+# ═══════════════════════════════════════════════════════════════════════════
+#  RÈGLES DE VALIDATION TRANSVERSALES
+# ═══════════════════════════════════════════════════════════════════════════
+###############################################################################
+
+:NoStructuralDowngrade a sh:NodeShape ;
+  rdfs:label "No Structural Downgrade" ;
+  rdfs:comment "Règle critique : aucun LLM ne peut supprimer ou rétrograder un titre de chapitre en paragraphe." ;
+
+  sh:targetClass :InputPlugin ;
+  sh:property [
+    sh:path :hasInputType ;
+    sh:hasValue :type-docx ;
+  ] .
+
+# Règle : le Content Cleaner ne supprime jamais un élément structurel
+# (appliquée programmatiquement dans le moteur, car les classes exactes
+#  des éléments XHTML sont dynamiques)
