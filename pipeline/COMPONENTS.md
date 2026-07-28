@@ -20,6 +20,12 @@
 ╚══════════════════════════════════════════════════════╝
            │
            ▼
+║                                                      ║
+║ VALIDATION ONTOLOGIQUE (BookContent) :               ║
+║  ├── Vérifie titres non vides                        ║
+║  ├── Vérifie paragraphes non vides                   ║
+║  ├── Vérifie structure front/body/back matter        ║
+║  └── SHACL validation automatique                    ║
 ╔══════════════════════════════════════════════════════╗
 ║               PHASE 2 : ÉDITION IA                   ║
 ╠══════════════════════════════════════════════════════╣
@@ -42,6 +48,12 @@
 ║    └── Métadonnées WCAG                              ║
 ║                                                      ║
 ║ Sortie : EPUB 3 enrichi par IA                        ║
+║                                                      ║
+║ VALIDATION ONTOLOGIQUE (par plugin) :                ║
+║  ├── scan_for_structure_risks() avant/après          ║
+║  ├── AI-Content-Cleaner : pas de suppression h1      ║
+║  ├── AI-Theme-Generator : bleed ∈ {0, 0.125}        ║
+║  └── Si violation → feedback LLM → re-génération    ║
 ╚══════════════════════════════════════════════════════╝
            │
            ▼
@@ -62,6 +74,12 @@
 ║ Sortie : {titre}.epub + {titre}.pdf                   ║
 ╚══════════════════════════════════════════════════════╝
 ```
+║                                                      ║
+║ VALIDATION ONTOLOGIQUE (pre-flight) :                ║
+║  ├── Template KDP connu et cohérent                  ║
+║  ├── Running heads obligatoires                      ║
+║  ├── Marges alternées gauche/droite                  ║
+║  └── Bloquer export si violation critique            ║
 
 ## Composants Détaillés
 

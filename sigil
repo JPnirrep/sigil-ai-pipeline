@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+"""
+KLEIA-UP Book — Batch CLI
+sigil batch --input "*.docx" --format epub,pdf --output ./out
+"""
+
+import os, sys, json, time, glob, argparse
+from pathlib import Path
+
+# Add poc dir to path
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_SCRIPT_DIR, "poc"))
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="KLEIA-UP Book — Pipeline batch de production EPUB + PDF print",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Exemples :
+  sigil batch --input "*.docx" --format epub,pdf
+  sigil batch -i docs/ -o dist/ -f epub --genre fiction
+  sigil batch --input "livre_*.docx" --json --parallel 4
+        """
+    )
+    parser.add_argument("-i", "--input", required=True, help="Glob ou dossier de fichiers DOCX")
+    parser.add_argument("-o", "--output", default="./kleia-up-output", help="Dossier de sortie")
+    parser.add_argument("-f", "--format", nargs="+", default=["epub", "pdf"],
+                        choices=["epub", "pdf"], help="Formats de sortie")
+    parser.add_argument("-g", "--genre", choices=["auto", "fiction", "scifi", "fantasy", "nonfiction"],
+                        default="auto", help="Genre (auto = détection automatique)")
+    parser.add_argument("--parallel", type=int, default=1, help="Nombre de workers parallèles")
+    parser.add_argument("--json", action="store_true", help="Rapport JSON")
+    parser.add_argument("--no-clean", action="store_true", help="Ne pas nettoyer le dossier de sortie")
+
+    args = parser.parse_args()
+
+    # Collect DOCX files
+    input_path = args.input
+    if os.path.isfile(input_path):
+        docx_files = [input_path]
+    elif os.path.isdir(input_path):
+        docx_files = sorted(glob.glob(os.path.join(input_path, "*.docx")))
+    else:
+        docx_files = sorted(glob.glob(input_path))
+
+    if not docx_files:
+        print(f"❌ Aucun fichier DOCX trouvé : {input_path}")
+        sys.exit(1)
+
+    # Setup output
+    output_dir = args.output
+    os.makedirs(output_dir, exist_ok=True)
+
+    genre = args.genre if args.genre != "auto" else None
+    fmt = args.format
+    num_workers = args.parallel
+
+    from kleia_up_book import run_pipeline
+
+    total_start = time.time()
+    all_results = []
+    errors = []
+
+    print(f"\n{'='*60}")
+    print(f"  KLEIA-UP Book — Batch Production")
+    print(f"{'='*60}")
+    print(f"  Fichiers : {len(docx_files)} DOCX")
+    print(f"  Formats  : {', '.join(fmt)}")
+    print(f"  Genre    : {args.genre}")
+    print(f"  Workers  : {num_workers}")
+    print(f"  Sortie   : {output_dir}")
+    print(f"{'='*60}\n")
+
+    if num_workers > 1 and len(docx_files) > 1:
+        # Parallel processing
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        def process_single(docx_path):
+            try:
+                book_dir = os.path.join(output_dir, Path(docx_path).stem)
+                os.makedirs(book_dir, exist_ok=True)
+                start = time.time()
+                result = run_pipeline(docx_path, book_dir, genre=genre, format=fmt)
+                elapsed = time.time() - start
+                return (docx_path, result, elapsed, None)
+            except Exception as e:
+                return (docx_path, None, 0, str(e))
+
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            futures = {executor.submit(process_single, p): p for p in docx_files}
+            for i, future in enumerate(as_completed(futures), 1):
+                path, result, elapsed, error = future.result()
+                name = Path(path).stem
+                if error:
+                    print(f"  [{i}/{len(docx_files)}] ✗ {name:40s} {error}")
+                    errors.append({"file": path, "error": error})
+                else:
+                    print(f"  [{i}/{len(docx_files)}] ✓ {name:40s} {elapsed:.2f}s")
+                    all_results.append(result)
+    else:
+        # Sequential processing
+        for i, docx_path in enumerate(docx_files, 1):
+            name = Path(docx_path).stem
+            try:
+                book_dir = os.path.join(output_dir, name)
+                os.makedirs(book_dir, exist_ok=True)
+                start = time.time()
+                result = run_pipeline(docx_path, book_dir, genre=genre, format=fmt)
+                elapsed = time.time() - start
+                print(f"  [{i}/{len(docx_files)}] ✓ {name:40s} {elapsed:.2f}s")
+                all_results.append(result)
+            except Exception as e:
+                print(f"  [{i}/{len(docx_files)}] ✗ {name:40s} {e}")
+                errors.append({"file": str(docx_path), "error": str(e)})
+
+    total_elapsed = time.time() - total_start
+
+    # Summary
+    print(f"\n{'='*60}")
+    print(f"  RÉSULTATS")
+    print(f"{'='*60}")
+    print(f"  ✓ Réussis : {len(all_results)}/{len(docx_files)}")
+    print(f"  ✗ Échecs  : {len(errors)}")
+    print(f"  ⏱  Temps  : {total_elapsed:.1f}s")
+
+    # Aggregate stats
+    if all_results:
+        total_chapters = sum(r["book"]["chapters"] for r in all_results)
+        total_epub_kb = sum(
+            os.path.getsize(r["paths"].get("epub", "")) / 1024
+            for r in all_results if "epub" in r.get("paths", {})
+        )
+        total_pdf_kb = sum(
+            os.path.getsize(r["paths"].get("pdf", "")) / 1024
+            for r in all_results if "pdf" in r.get("paths", {})
+        )
+        avg_time = total_elapsed / len(all_results) if all_results else 0
+        print(f"  📚 Chapitres: {total_chapters}")
+        print(f"  📦 EPUB: {total_epub_kb:.0f} KB  |  PDF: {total_pdf_kb:.0f} KB")
+        print(f"  ⏱  Moyenne: {avg_time:.2f}s/livre")
+
+    if errors:
+        print(f"\n  ⚠ Détail des erreurs :")
+        for e in errors:
+            print(f"     - {e['file']}: {e['error']}")
+
+    print(f"{'='*60}\n")
+
+    # JSON report
+    if args.json:
+        report = {
+            "summary": {
+                "total": len(docx_files),
+                "success": len(all_results),
+                "failures": len(errors),
+                "total_time_s": round(total_elapsed, 2),
+            },
+            "books": all_results,
+            "errors": errors,
+        }
+        report_path = os.path.join(output_dir, "kleia-up-report.json")
+        with open(report_path, "w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2, default=str)
+        print(f"  📄 Rapport : {report_path}")
+
+    sys.exit(1 if errors and not all_results else 0)
+
+
+if __name__ == "__main__":
+    main()

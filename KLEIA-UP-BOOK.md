@@ -141,3 +141,7 @@ Pas de chef de projet, pas d'ops.
 - **Stratégie IA :** `ai-integration/STRATEGY.md`
 - **Scénarios d'usage :** `ai-integration/SCENARIOS.md`
 - **Repo GitHub :** https://github.com/JPnirrep/sigil-ai-pipeline
+- **Ontologie neurosymbolique :** `ontology/book-ontology.ttl`
+- **Moteur SHACL :** `ai-integration/ontology_engine.py`
+- **Wrapper agent :** `ai-integration/neuro_symbolic_agent.py`
+- **Plugin Sigil :** `plugins/sigil_ai_ontology.py`

@@ -335,7 +335,122 @@ Input: 50× DOCX + metadata JSON
 
 ---
 
-## 5. Comparaison Finale : Notre Pipeline vs Atticus
+---
+
+## 5. La Couche Ontologique (Neurosymbolique)
+
+> Implémentation des principes de Frank Coyle (AI Engineer, Juillet 2026) :
+> *« Les agents purement probabilistes échouent sur les cas limites —
+> l'ontologie est la barrière logique qui les transforme en systèmes fiables. »*
+
+### 5.1 Problème : les plugins IA ne sont pas fiables seuls
+
+Chaque plugin IA de notre pipeline prend des décisions probabilistes :
+- **AI-Content-Cleaner** peut supprimer un `<h1>` en croyant faire du ménage
+- **AI-Theme-Generator** peut générer un `bleed: 0.2` (invalide KDP)
+- **AI-Design-Advisor** peut suggérer un format 5×8 pour un livre 6×9
+
+Sans couche de validation logique, ces erreurs ne sont détectées qu'à l'export,
+voire après impression.
+
+### 5.2 Solution : ontologie RDFS/OWL + validation SHACL
+
+```
+┌─────────────────────────────────────────────────────┐
+│            ARCHITECTURE NEUROSYMBOLIQUE              │
+│                                                      │
+│  ┌──────────────────────┐   ┌────────────────────┐  │
+│  │ LLM (probabiliste)   │   │ Ontologie (logique)│  │
+│  │                      │   │                    │  │
+│  │ Génère une           │──▶│ SHACL + règles     │  │
+│  │ proposition (XHTML,  │   │ programmatiques    │  │
+│  │ CSS, design...)      │   │ valident           │  │
+│  │                      │◀──│ • structure livre   │  │
+│  │ Re-génère avec       │   │ • contraintes KDP   │  │
+│  │ feedback si invalide │   │ • séquence pipeline │  │
+│  └──────────────────────┘   └────────────────────┘  │
+│                                                      │
+│  Si KO après N tentatives → fallback heuristique     │
+└─────────────────────────────────────────────────────┘
+```
+
+### 5.3 Les 3 domaines de l'ontologie
+
+| Domaine | Contenu | Fichier |
+|---|---|---|
+| **BookContent** | Classes (Chapter, Section, Paragraph...), propriétés (hasTitle, content), contraintes SHACL | `ontology/book-ontology.ttl` |
+| **PublishingConstraints** | Formats KDP (6×9, 5.5×8.5...), bleed, gutter, running heads, polices | `ontology/book-ontology.ttl` |
+| **PipelinePhases** | Phases (Import → Editing → Export), dépendances entre plugins, types entrée/sortie | `ontology/book-ontology.ttl` |
+
+### 5.4 Moteur de validation
+
+| Composant | Rôle | Fichier |
+|---|---|---|
+| `OntologyEngine` | Charge l'ontologie, parse XHTML → RDF, exécute SHACL | `ai-integration/ontology_engine.py` |
+| `NeuroSymbolicAgent` | Wrapper plugin IA : LLM → validation → application ou rejet | `ai-integration/neuro_symbolic_agent.py` |
+| `ValidateOntologyPlugin` | Plugin Sigil : valide l'EPUB ouvert avant export | `plugins/sigil_ai_ontology.py` |
+| `scan_for_structure_risks()` | Compare avant/après pour détecter suppressions structurelles | Implémenté dans `ontology_engine.py` |
+
+### 5.5 Flux de validation pour chaque plugin IA
+
+```
+TemplateKDP-Import
+  └─ validate_content() : vérifie que le mapping DOCX → EPUB
+     respecte BookContent (chapitres, sections, paragraphes)
+     ↓
+AI-Content-Cleaner
+  ├─ validate_content()  : SHACL — pas de paragraphe vide
+  ├─ scan_for_structure_risks() : aucun <h1> supprimé
+  └─ validate_plugin_action()   : pas de downgrade structurel
+     ↓
+AI-Theme-Generator
+  └─ validate_plugin_action() : bleed ∈ {0, 0.125}, trim ∈ plage KDP,
+                                 formats {epub, pdf} obligatoires
+     ↓
+AI-Design-Advisor
+  └─ validate_plugin_action() : genre compatible avec suggestions
+     ↓
+PrintPDF-Exporter
+  ├─ validate_plugin_action() : template KDP connu, running heads OK
+  └─ pre_export_check()       : validation complète avant WeasyPrint
+```
+
+### 5.6 Exemple concret : une violation bloquée
+
+```python
+# Ce que le LLM propose de faire (dangereux) :
+proposal = {
+    "change_type": "delete",
+    "target_tag": "h1",
+    "reasoning": "titre de chapitre vide, supprimer"
+}
+
+# Ce que l'OntologyEngine répond :
+engine.validate_plugin_action("AI-Content-Cleaner", proposal)
+# → OntologyViolationError:
+#   "Le Content Cleaner ne peut pas supprimer un élément structurel <h1>."
+
+# Le LLM re-génère avec le feedback :
+proposal2 = {
+    "change_type": "replace",
+    "target_tag": "h1",
+    "content": "Chapitre 1 — Le Réveil"
+}
+# → Validation OK
+```
+
+### 5.7 Bénéfices mesurables
+
+| Sans ontologie | Avec ontologie |
+|---|---|
+| LLM peut supprimer une structure sémantique | Structure protégée par SHACL + scan diff |
+| CSS généré peut être incompatible KDP | trimSize, bleed, gutter validés par règles |
+| Pipeline peut désordonner les phases | Graphe de dépendances formel dans l'ontologie |
+| Erreurs détectées à l'export (trop tard) | Erreurs détectées à la génération (immédiat) |
+| Debug = re-lecture manuelle des XHTML | Debug = rapport SHACL avec violation exacte |
+| Pas de barrière entre LLM et production | Barrière neurosymbolique validée |
+
+---
 
 | Critère | Atticus | Pipeline Sigil + IA | Avantage |
 |---|---|---|---|

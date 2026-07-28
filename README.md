@@ -5,75 +5,75 @@
 >
 > **Code name : KLEIA-UP Book**
 
-## Pourquoi
+## Status
 
-**Atticus** ($147) est le standard actuel pour les auteurs auto-édités : templates KDP, export EPUB + PDF print. Mais c'est un logiciel propriétaire, sans plugins, sans API, sans IA.
+**V0 — Pipeline Minimum** ✅ Livré
 
-**Sigil** (6 900 ⭐, GPLv3) est un éditeur EPUB open-source mature avec 50+ plugins Python. Il lui manque deux choses :
-1. L'export PDF print (avec pagination, running heads, gutter, bleed)
-2. Le pilotage par IA
+## Stack
 
-Ce projet comble ces deux gaps.
+- **Pipeline :** Python 3, DOCX → XHTML sémantique → EPUB 3 + PDF print
+- **PDF Print :** Playwright/Chromium (CSS Paged Media complet : gutter, running heads, bleed, trim)
+- **Fallback PDF :** pdfkit/wkhtmltopdf (si Playwright indisponible)
+- **Plugin Sigil :** plugin.xml + plugin.py — interface GUI dans Sigil
+- **CLI Batch :** `sigil -i "*.docx" -f epub,pdf --json`
+- **DOCX parsing :** python-docx (styles KDP : Heading 1, Body Text, Title, etc.)
+- **IA :** Bridge LLM (presets par genre + LLM optionnel)
 
 ## Architecture
 
 ```
-Template KDP (DOCX)
+DOCX (KDP template)
     │
-    ▼
-TemplateKDP-Import plugin ───────────┐
-    │  Parse les styles DOCX          │  AI-Theme-Generator
-    │  → XHTML + CSS sémantique       │  (LLM → CSS)
-    ▼                                 │
-Sigil (édition / validation)  ◄───────┘
-    │
-    ├── Export EPUB 3 (natif)
-    │
-    └── PrintPDF-Exporter (WeasyPrint + CSS Paged Media)
-         → PDF prêt KDP (trim, gutter, running heads, bleed)
+    ├── CLI batch     ──┐
+    ├── Sigil plugin  ──┤
+    ├── API Python    ──┤
+    │                   ▼
+    │           TemplateKDP-Import
+    │           (parse styles → XHTML sémantique)
+    │                   │
+    │                   ▼
+    │           AI-Theme-Generator
+    │           (genre detection → CSS EPUB + Print)
+    │                   │
+    │           ┌───────┴───────┐
+    │           ▼               ▼
+    │       EPUB 3          PDF Print
+    │       (valide)        (CSS Paged Media)
 ```
 
-## Équipe
+## V0 Livré
 
-| Rôle | Profil |
-|---|---|
-| JP (Senior Dev) | Coordination, POC, validation |
-| Dev Python/Backend | Plugins Sigil, API, batch, WeasyPrint |
-| Dev C++/Qt | sigil-cli, intégration plugin engine |
-| Dev Frontend/Design | CSS Paged Media, thèmes, interface web |
-
-## Planning
-
-| Phase | Semaines | Livrable |
+| Composant | Statut | Technologie |
 |---|---|---|
-| POC | 1 | Pipeline fonctionnel de bout en bout |
-| V0.1 Import | 2 | `sigil batch --format epub` sur 5 DOCX KDP |
-| V0.2 PDF | 3 | + `--format pdf` valide vs Atticus |
-| V1.1 Bridge IA | 4 | Nettoyage + thème IA automatisés |
-| V1.2 Print final | 5 | PDF print finalisé, tous cas KDP |
-| V2.1 Batch | 6 | Batch 50 livres, rapports qualité |
-| V2.2 Web UI | 7 | Interface web fonctionnelle |
-| Livraison | 8 | Docs, formation, recette, hotfix |
+| Parser DOCX KDP | ✅ | python-docx, 7+ styles |
+| Builder EPUB 3 | ✅ | ZIP + OPF + Nav |
+| Builder PDF print | ✅ | Playwright/Chromium (ou WeasyPrint, ou pdfkit) |
+| Détection template | ✅ | Trim, marges, bleed depuis DOCX |
+| Cartographie genre | ✅ | scifi, fiction, fantasy, nonfiction + presets |
+| Génération thème CSS | ✅ | EPUB + Print, par genre |
+| Plugin Sigil | ✅ | Interface graphique (tkinter) |
+| CLI batch | ✅ | `sigil -i "*.docx" -f epub,pdf --json` |
+| Adaptateur TXT | ✅ | TXT → DOCX structuré |
+| Espacement paragraphe | ✅ | 0.5em EPUB / 0.3em Print |
+| Rapport JSON | ✅ | Timing, erreurs, métriques |
 
-## Plugins à construire
+## Roadmap
 
-| Plugin | Rôle | Priorité |
-|---|---|---|
-| `TemplateKDP-Import` | Parse DOCX KDP → EPUB sémantique | P0 |
-| `PrintPDF-Exporter` | Export PDF print via WeasyPrint | P0 |
-| `AI-Theme-Generator` | Génération CSS thème par LLM | P0 |
-| `AI-Content-Cleaner` | Typographie intelligente | P0 |
-| `AI-Design-Advisor` | Suggestions design selon genre | P1 |
-| `AI-Accessibility` | Génération WCAG automatique | P2 |
+- **V1 — Boucle IA** : LLM theme gen, content cleaner, accessibility
+- **V2 — Production** : Batch multi-worker, Web UI, validation comparative
 
-## Stack
+## Usage
 
-- **Base :** Sigil 2.8+ (Qt6, Python 3.14)
-- **Plugin API :** Python 3.14, `bookcontainer.py`, `sigil_bs4`
-- **PDF Print :** WeasyPrint (CSS Paged Media)
-- **Prévisualisation :** Paged.js
-- **IA :** Bridge LLM (OpenAI / Claude / Mistral / local)
-- **DOCX parsing :** python-docx
+```bash
+# CLI Batch
+sigil -i "mon_livre.docx" -f epub pdf -o ./dist
+
+# TXT → EPUB + PDF
+python adaptateur_txt.py mon_fichier.txt
+
+# Plugin Sigil
+# Installer dans Sigil → Plugins → KLEIA-UP Book Pipeline
+```
 
 ## Docs
 
@@ -84,7 +84,3 @@ Sigil (édition / validation)  ◄───────┘
 - [Stratégie IA](ai-integration/STRATEGY.md)
 - [Scénarios](ai-integration/SCENARIOS.md)
 - [Plan de delivery](KLEIA-UP-BOOK.md)
-
-## Licence
-
-GNU General Public License v3.0 — comme Sigil.

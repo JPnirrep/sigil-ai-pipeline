@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin version="1.0">
+  <name>KLEIA-UP Book Pipeline</name>
+  <type>output</type>
+  <author>JP — KLEIA-UP Project</author>
+  <description>
+    Pipeline de production EPUB + PDF print.
+    Importe les DOCX templates Amazon KDP et produit :
+    - EPUB 3 valide (reflowable, accessible)
+    - PDF print-ready (trim KDP, gutter, running heads, bleed)
+    Détection automatique du genre et génération de thème CSS.
+  </description>
+  <minimum_sigil_version>2.0.0</minimum_sigil_version>
+  <actions>
+    <action>pipeline_action</action>
+  </actions>
+  <icon>plugin.png</icon>
+</plugin>

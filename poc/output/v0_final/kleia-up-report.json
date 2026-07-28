@@ -1,0 +1,75 @@
+{
+  "summary": {
+    "total": 2,
+    "success": 2,
+    "failures": 0,
+    "total_time_s": 6.23
+  },
+  "books": [
+    {
+      "book": {
+        "title": "La Kabbale des Nombres",
+        "author": "Sepharial",
+        "chapters": 16,
+        "template_detected": true,
+        "trim": "6.0\u00d79.0in",
+        "styles_detected": [
+          "Author",
+          "Body Text",
+          "Body Text First Paragraph",
+          "Heading 1",
+          "Normal",
+          "Subtitle",
+          "Title"
+        ],
+        "genre_detected": "scifi",
+        "theme": "Neon Futurist"
+      },
+      "paths": {
+        "epub": "poc\\output\\v0_final\\kabala_sepharial\\kabala_sepharial.epub",
+        "pdf": "poc\\output\\v0_final\\kabala_sepharial\\kabala_sepharial.pdf"
+      },
+      "timing": {
+        "parsing": 0.24,
+        "theme": 0.0,
+        "export_epub": 0.01,
+        "export_pdf": 3.21,
+        "total": 3.46
+      },
+      "errors": []
+    },
+    {
+      "book": {
+        "title": "LES OUBLI\u00c9S DE VERIDYA",
+        "author": "Jean Perrin",
+        "chapters": 3,
+        "template_detected": true,
+        "trim": "6.0\u00d79.0in",
+        "styles_detected": [
+          "Author",
+          "Body Text",
+          "Body Text First Paragraph",
+          "Heading 1",
+          "Normal",
+          "Subtitle",
+          "Title"
+        ],
+        "genre_detected": "scifi",
+        "theme": "Neon Futurist"
+      },
+      "paths": {
+        "epub": "poc\\output\\v0_final\\kdp_6x9_template\\kdp_6x9_template.epub",
+        "pdf": "poc\\output\\v0_final\\kdp_6x9_template\\kdp_6x9_template.pdf"
+      },
+      "timing": {
+        "parsing": 0.01,
+        "theme": 0.0,
+        "export_epub": 0.0,
+        "export_pdf": 2.76,
+        "total": 2.77
+      },
+      "errors": []
+    }
+  ],
+  "errors": []
+}

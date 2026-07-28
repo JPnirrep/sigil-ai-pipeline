@@ -10,20 +10,24 @@ NIVEAU 1 — Plugin IA intégré (Python dans Sigil)
 ├── Accès direct à bookcontainer + sigil_bs4
 ├── Communication LLM via HTTP (API externe)
 ├── Usage : nettoyage, génération CSS, validation
-└── Latence : faible (appels API parallélisés)
+├── Latence : faible (appels API parallélisés)
+└── Validation ontologique avant chaque action
+       (SHACL + règles programmatiques)
 
 NIVEAU 2 — Agent externe (Processus séparé)
 ├── S'exécute dans son propre process Python
 ├── Communique avec Sigil via sigil-cli
 ├── Possède sa propre mémoire/état
 ├── Usage : orchestration multi-livre, décisions complexes
-└── Latence : moyenne (I/O fichiers)
+├── Latence : moyenne (I/O fichiers)
+└── Validation ontologique (ontologie externe)
 
 NIVEAU 3 — Service web (API REST)
 ├── Serveur FastAPI/Flask local
 ├── Interface web pour « designer IA »
 ├── Usage : mode interactif, prévisualisation, feedback
-└── Latence : plus élevée (serveur web + LLM)
+├── Latence : plus élevée (serveur web + LLM)
+└── Validation ontologique (via NeuroSymbolicAgent)
 ```
 
 ### Stack LLM
@@ -34,6 +38,19 @@ NIVEAU 3 — Service web (API REST)
 | **Mistral Large** | Génération CSS, nettoyage typo | €€ | Très bonne |
 | **DeepSeek V4** | Analyses rapides, fallback | € | Bonne |
 | **Llama 3 (local)** | Usage hors-ligne, données sensibles | Gratuit | Correcte |
+
+### 1.5 Couche de Validation Ontologique (NEUVE)
+
+Chaque appel LLM est enrobé par `NeuroSymbolicAgent` :
+
+```
+LLM → proposition → OntologyEngine → valide → appliquer
+                                    → invalide → feedback → LLM re-génère
+                                                         → fallback
+```
+
+Voir `../ontology/book-ontology.ttl` pour le schéma complet
+et `../ai-integration/ontology_engine.py` pour l'implémentation.
 
 ## 2. Prompts et Templates LLM
 
@@ -65,7 +82,7 @@ Nettoie ce texte XHTML selon les règles typographiques françaises :
 2. Espaces insécables avant ; : ! ?
 3. Ellipses unifiées … (pas trois points)
 4. Tirets cadratins — (pas --)
-5. Apostrophes courbes ’ (pas ')
+5. Apostrophes courbes ' (pas ')
 6. Ligatures automatiques (fi, fl, ff, ffi, ffl)
 7. Pas d'espaces doubles
 
@@ -138,8 +155,17 @@ Chaque worker est un processus Python indépendant. Le goulot d'étranglement es
 | WeasyPrint échoue | Fallback Paged.js (rendu browser) | Rapport d'erreur |
 | DOCX mal formé | Extraction partielle + rapport warning | Correction manuelle puis reprise |
 | Plugin Sigil crashe | Isolation process + redémarrage | État sauvegardé (checkpoint) |
+| **Validation ontologique bloquante** | **Boucle feedback LLM (N max) → fallback** | **Rapport de dégradation** |
+| **Structure détectée supprimée** | **Rejet immédiat (scan diff avant/après)** | **Aucun fallback — revue manuelle** |
 
 ## 5. Roadmap Technique
+
+### Sprint 0 (1 semaine) — Fondation Ontologique
+- [ ] Définir ontologie RDFS/OWL (BookContent, PublishingConstraints, PipelinePhases)
+- [ ] Implémenter OntologyEngine (pySHACL + rdflib)
+- [ ] Implémenter NeuroSymbolicAgent (wrapper LLM + validation)
+- [ ] Plugin Sigil ValidateOntology
+- [ ] Tests unitaires de validation
 
 ### Sprint 1 (2 semaines) — Bridge
 - [ ] Fork sigil-cli avec API batch

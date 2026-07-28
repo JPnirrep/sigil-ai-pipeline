@@ -171,6 +171,107 @@ RÉSULTAT :
   ✓ Temps total : 14 minutes
 ```
 
+
+## Scénario G — Pipeline Neurosymbolique avec Validation Ontologique
+
+**Profil :** Pipeline automatisé où chaque action IA est validée par l'ontologie avant application.
+
+```
+INPUT:  manuscrit.docx (template KDP 6×9)
+        preferences.json
+
+─────────── ÉTAPE 1 : IMPORT ──────────────────────────
+[00:00] > TemplateKDP-Import : parsing DOCX...
+[00:01] → 22 chapitres extraits
+         ✦ VALIDATION ONTOLOGIQUE (BookContent) :
+           ✓ Tous les chapitres ont un titre non vide
+           ✓ Tous les paragraphes ont du contenu
+           ✓ Front matter structuré (titre, copyright, TOC)
+
+─────────── ÉTAPE 2 : NETTOYAGE IA ─────────────────────
+[00:02] > AI-Content-Cleaner : LLM génère corrections...
+
+         ✦ VALIDATION ONTOLOGIQUE (diff structure) :
+           ⚠ Tentative de suppression d'un <h1> vide
+           → FEEDBACK envoyé au LLM : "Ne pas supprimer h1, le renommer"
+           → LLM re-génère : <h1>Chapitre sans titre</h1>
+           ✓ Validation OK
+
+         ✦ VALIDATION SHACL :
+           ✓ 0 violation, 1 warning (image > 300 DPI)
+
+─────────── ÉTAPE 3 : THÈME IA ─────────────────────────
+[00:05] > AI-Theme-Generator : LLM génère thème...
+
+         ✦ VALIDATION ONTOLOGIQUE (PublishingConstraints) :
+           ❌ Bleed proposé : 0.2 (hors plage {0.0, 0.125})
+           → FEEDBACK envoyé : "Bleed invalide. Corrigé à 0.125."
+           → LLM re-génère avec bleed: 0.125
+           ✓ Validation OK
+
+         ✦ VALIDATION :
+           ✓ 2 formats (epub + pdf)
+           ✓ Trim size 6×9
+           ✓ Police body serif (Garamond)
+
+─────────── ÉTAPE 4 : EXPORT ──────────────────────────
+[00:08] > PrintPDF-Exporter :
+         ✦ PRE-FLIGHT ONTOLOGIQUE :
+           ✓ Template kdp-6x9 reconnu
+           ✓ Running heads configurés (left/right)
+           ✓ Marges alternées (0.9/0.6)
+           ✓ Bleed 0.125 OK
+         → WeasyPrint rendering...
+
+─────────── RÉSULTAT ──────────────────────────────────
+✓ manuscrit.epub   (324 KB, EPUB 3, validé)
+✓ manuscrit.pdf    (2.1 MB, print-ready KDP)
+✓ 2 violations ontologiques détectées et corrigées automatiquement
+✗ Erreurs: 0   Avertissements: 1 (image > 300 DPI)
+
+Temps total : 9 minutes 47 secondes
+(dont ~20 secondes de boucle LLM+validation)
+```
+
+## Scénario H — Échec Ontologique avec Fallback
+
+**Profil :** Le LLM ne parvient pas à corriger sa proposition après N tentatives.
+
+```
+INPUT:  manuscrit.docx { format: "6×9", genre: "fiction" }
+
+[00:02] > AI-Theme-Generator
+
+         ✦ TENTATIVE 1 : LLM → bleed: 0.3
+         ❌ Violation : bleed hors plage
+
+         ✦ TENTATIVE 2 (feedback) : LLM → bleed: 0.15
+         ❌ Violation : bleed hors plage
+
+         ✦ TENTATIVE 3 (feedback) : LLM → {epub only, pas de print}
+         ❌ Violation : formats manquants (epub + pdf requis)
+
+         ⚠ MAX RETRIES ATTEINT → FALLBACK HEURISTIQUE
+         → Application du thème par défaut "classic-serif" (pré-généré)
+         → Rapport : "Thème IA rejeté par l'ontologie après 3 tentatives.
+            Fallback classic-serif appliqué. Revue manuelle recommandée."
+
+─────────── RÉSULTAT ──────────────────────────────────
+✓ EPUB exporté (thème fallback)
+✓ PDF exporté (thème fallback)
+⚠ Rapport de dégradation généré
+⚠ Revue manuelle requise
+```
+
+### Tableau récapitulatif des scénarios ontologiques
+
+| Scénario | Validations | Boucle feedback | Fallback |
+|---|---|---|---|
+| G — Pipeline normal | BookContent + PublishingConstraints + PipelinePhases | Oui (1-2 itérations) | Non |
+| H — Échec LLM | PublishingConstraints | Oui (N max) | Thème heuristique |
+| Plugin ETL dégradé | scan_for_structure_risks | Non (erreur irrécupérable) | Export bloqué |
+| Validation interactive | SHACL + règles programmatiques | Oui (feedback UI) | Option "forcer quand même" |
+
 ## Scénario E : Travail Collaboratif — Git + Revue
 
 **Profil :** Équipe de 3 personnes sur un livre technique.

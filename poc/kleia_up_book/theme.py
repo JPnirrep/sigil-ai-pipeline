@@ -210,13 +210,13 @@ h1.chapter-title {{
 
 section.chapter p.body-text {{
   text-indent: 1.5em;
-  margin: 0;
+  margin: 0 0 0.5em 0;
   {'hyphens: auto;' if s['hyphenation'] else ''}
 }}
 
 section.chapter p.first-para {{
   text-indent: 0;
-  margin: 0;
+  margin: 0 0 0.5em 0;
   {'font-variant: small-caps;' if s['dropcaps'] else ''}
 }}
 
@@ -320,7 +320,7 @@ h1.chapter-title {{
 
 p.body-text {{
   text-indent: 1.5em;
-  margin: 0;
+  margin: 0 0 0.3em 0;
   {'hyphens: auto;' if s['hyphenation'] else ''}
   widows: 2;
   orphans: 2;
@@ -328,7 +328,7 @@ p.body-text {{
 
 p.first-para {{
   text-indent: 0;
-  margin: 0;
+  margin: 0 0 0.3em 0;
 }}
 
 {dropcap_css}
