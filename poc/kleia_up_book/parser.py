@@ -160,13 +160,19 @@ def _fuzzy_match(style_name: str) -> dict:
 
 
 def _classify_front(text: str) -> str:
-    """Classify front matter paragraph into section type."""
+    """Classify front matter paragraph into section type. Returns a section key."""
     t = text.strip().lower()
-    if not t: return "generic"
-    if t.startswith("table des mati"): return "toc-title"
-    if t.startswith("introduction"): return "intro-title"
-    if any(w in t for w in ["copyright", "tous droits", "isbn", "©"]): return "copyright"
-    if t.startswith("dédicace") or t.startswith("a mes"): return "dedication"
+    if not t:
+        return "generic"
+    if t.startswith("table des mati"):
+        return "toc-title"
+    if t.startswith("introduction"):
+        return "intro-title"
+    if any(w in t for w in ["copyright", "tous droits", "isbn", "©"]):
+        return "copyright"
+    if t.startswith("dédicace") or t.startswith("a mes"):
+        return "dedication"
+    return "generic"
 def _highlight_numbers(text: str) -> str:
     """Smart number highlighting: key numbers only, not addresses/dates."""
     import re
@@ -202,13 +208,28 @@ def render_xhtml(book: ParsedBook) -> str:
     if book.author:
         parts.append(f'<p class="author">{_escape(book.author)}</p>')
     parts.append('</section>')
-
     # ── Front matter sections ──
     current_section = None
     sections_created = set()
 
+    # Title dedup: text to skip because they're in title-page section
+    _skip_texts = set()
+    if book.title:
+        _skip_texts.add(book.title.strip().lower())
+    if book.subtitle:
+        _skip_texts.add(book.subtitle.strip().lower())
+    if book.author:
+        _skip_texts.add(book.author.strip().lower())
+
     for tag, cls, text in book.front_matter:
         ft = _classify_front(text)
+        stripped = text.strip().lower()
+
+        # Skip duplicates of title-page content
+        if stripped in _skip_texts:
+            continue
+        if book.title and book.author and book.title.strip().lower() in stripped and book.author.strip().lower() in stripped:
+            continue
 
         # TOC title — open TOC section (once)
         if ft == "toc-title" and "toc" not in sections_created:
@@ -228,10 +249,9 @@ def render_xhtml(book: ParsedBook) -> str:
                 attr = f' class="{cls}"' if cls else ""
                 parts.append(f'<{tag}{attr}>{_highlight_numbers(text)}</{tag}>')
                 continue
-            # Not a TOC entry: close TOC, then fall through to render this paragraph
+            # Not a TOC entry: close TOC, then fall through to render
             parts.append('</section>')
             current_section = None
-            # Fall through to generic rendering below
 
         # Introduction / copyright (only when NOT in TOC)
         if ft == "intro-title" and "intro" not in sections_created:
@@ -251,6 +271,9 @@ def render_xhtml(book: ParsedBook) -> str:
         # Generic: render with current section or standalone
         attr = f' class="{cls}"' if cls else ""
         parts.append(f'<{tag}{attr}>{_highlight_numbers(text)}</{tag}>')
+
+    if current_section:
+        parts.append('</section>')
 
     # ── Chapters ──
     for ch in book.chapters:
