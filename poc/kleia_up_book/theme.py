@@ -224,6 +224,28 @@ blockquote {{
   margin: 1em 2em;
   font-style: italic;
 }}
+
+/* ── Front matter ── */
+section.title-page {{
+  page-break-after: always;
+  text-align: center;
+  padding-top: 20%;
+}}
+
+section.front-matter-toc {{
+  page-break-before: always;
+}}
+
+section.front-matter-intro {{
+  page-break-before: always;
+}}
+
+/* ── Number highlighting ── */
+span.num {{
+  font-weight: bold;
+  font-size: 1.1em;
+  color: {c['accent']};
+}}
 """
 
 
@@ -338,6 +360,28 @@ section.copyright {{
   font-size: 9pt;
   margin-top: 10%;
   page-break-before: left;
+}}
+
+/* ── Front matter ── */
+section.title-page {{
+  page-break-after: always;
+  text-align: center;
+  padding-top: 30%;
+}}
+
+section.front-matter-toc {{
+  page-break-before: left;
+}}
+
+section.front-matter-intro {{
+  page-break-before: left;
+}}
+
+/* ── Number highlighting ── */
+span.num {{
+  font-weight: bold;
+  font-size: 1.1em;
+  color: {c['accent']};
 }}
 """
 
