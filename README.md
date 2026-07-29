@@ -7,7 +7,8 @@
 
 ## Status
 
-**V0 — Pipeline Minimum** ✅ Livré
+**V0 — Pipeline Minimum** ✅ Livré  
+**V0.5 — Éditeur Web** ✅ Livré
 
 ## Stack
 
@@ -18,6 +19,7 @@
 - **CLI Batch :** `sigil -i "*.docx" -f epub,pdf --json`
 - **DOCX parsing :** python-docx (styles KDP : Heading 1, Body Text, Title, etc.)
 - **IA :** Bridge LLM (presets par genre + LLM optionnel)
+- **Éditeur Web :** FastAPI + React/Vite + TipTap (WYSIWYG)
 
 ## Architecture
 
@@ -31,56 +33,99 @@ DOCX (KDP template)
     │           TemplateKDP-Import
     │           (parse styles → XHTML sémantique)
     │                   │
-    │                   ▼
-    │           AI-Theme-Generator
-    │           (genre detection → CSS EPUB + Print)
-    │                   │
     │           ┌───────┴───────┐
     │           ▼               ▼
     │       EPUB 3          PDF Print
     │       (valide)        (CSS Paged Media)
+    │
+    └── Éditeur Web (V0.5)
+            │
+        FastAPI backend
+            │
+    ┌───────┴───────┐
+    ▼               ▼
+React/Vite      TipTap Editor
+ (UI)           (WYSIWYG)
 ```
 
-## V0 Livré
+## V0.5 — Éditeur Web
 
-| Composant | Statut | Technologie |
-|---|---|---|
-| Parser DOCX KDP | ✅ | python-docx, 7+ styles |
-| Builder EPUB 3 | ✅ | ZIP + OPF + Nav |
-| Builder PDF print | ✅ | Playwright/Chromium (ou WeasyPrint, ou pdfkit) |
-| Détection template | ✅ | Trim, marges, bleed depuis DOCX |
-| Cartographie genre | ✅ | scifi, fiction, fantasy, nonfiction + presets |
-| Génération thème CSS | ✅ | EPUB + Print, par genre |
-| Plugin Sigil | ✅ | Interface graphique (tkinter) |
-| CLI batch | ✅ | `sigil -i "*.docx" -f epub,pdf --json` |
-| Adaptateur TXT | ✅ | TXT → DOCX structuré |
-| Espacement paragraphe | ✅ | 0.5em EPUB / 0.3em Print |
-| Rapport JSON | ✅ | Timing, erreurs, métriques |
+| Fonction | Statut |
+|---|---|
+| Import DOCX (KDP template) | ✅ |
+| Édition WYSIWYG (TipTap) | ✅ Texte, H1/H2/H3, gras, italique, alignement, blockquote, images |
+| Navigation par chapitres | ✅ Ajout/suppression/réordonnancement |
+| Panneau style | ✅ Police, taille, interligne, alignement, couleurs (temps réel) |
+| Aperçu live (iframe CSS) | ✅ Reflète les réglages du panneau style |
+| Export EPUB 3 | ✅ Valide, avec couverture + métadonnées |
+| Export PDF print-ready | ✅ Playwright + CSS Paged Media |
+| Templates KDP | ✅ 7 formats (6×9, 5.5×8.5, 8.5×11, A4) |
+| Aliases auteur | ✅ Registre, sélection en un clic |
+| Couverture | ✅ Upload image → intégrée dans l'EPUB |
+| Sessions persistantes | ✅ Sauvegarde + restauration automatique |
+| Notifications | ✅ Toasts succès/erreur |
 
-## Roadmap
+## Démarrage rapide
 
-- **V1 — Boucle IA** : LLM theme gen, content cleaner, accessibility
-- **V2 — Production** : Batch multi-worker, Web UI, validation comparative
-
-## Usage
+### Web Editor
 
 ```bash
-# CLI Batch
-sigil -i "mon_livre.docx" -f epub pdf -o ./dist
+# Terminal 1 — Backend (FastAPI)
+python -m uvicorn editor.api.main:app --port 8589 --host 0.0.0.0
 
-# TXT → EPUB + PDF
-python adaptateur_txt.py mon_fichier.txt
-
-# Plugin Sigil
-# Installer dans Sigil → Plugins → KLEIA-UP Book Pipeline
+# Terminal 2 — Frontend (Vite)
+cd editor/frontend
+npx vite --port 5173
 ```
 
-## Docs
+Puis ouvrir http://localhost:5173
 
-- [Analyse complète](ANALYSIS.md)
-- [Architecture](architecture/ARCHITECTURE.md)
-- [Pipeline](pipeline/COMPONENTS.md)
-- [Plugins](plugins/INVENTORY.md)
-- [Stratégie IA](ai-integration/STRATEGY.md)
-- [Scénarios](ai-integration/SCENARIOS.md)
-- [Plan de delivery](KLEIA-UP-BOOK.md)
+### Windows
+
+Double-cliquer sur `start-editor.bat`
+
+### CLI Batch Pipeline
+
+```bash
+sigil -i "mon_livre.docx" -f epub pdf -o ./dist
+```
+
+### Plugin Sigil
+
+Installer dans Sigil → Plugins → KLEIA-UP Book Pipeline
+
+## Structures des dossiers
+
+```
+├── editor/                    ← Éditeur web
+│   ├── api/
+│   │   ├── main.py            ← FastAPI (routes, export EPUB/PDF)
+│   │   ├── models.py          ← Pydantic models
+│   │   └── requirements.txt
+│   ├── frontend/
+│   │   ├── src/
+│   │   │   ├── App.tsx        ← Layout, landing, projet, éditeur
+│   │   │   ├── api.ts         ← Client API
+│   │   │   ├── types.ts       ← Types TypeScript
+│   │   │   ├── index.css      ← Design system
+│   │   │   └── components/
+│   │   │       ├── RichEditor.tsx       ← TipTap
+│   │   │       ├── StylePanel.tsx       ← Panneau style (français)
+│   │   │       └── ProjectSetupDialog.tsx ← Dialogue création projet
+│   │   ├── vite.config.ts
+│   │   └── package.json
+│   ├── templates/             ← Templates KDP générés
+│   └── .data/                 ← Sessions (gitignored)
+├── poc/kleia_up_book/         ← Pipeline cœur
+│   ├── parser.py              ← DOCX → ParsedBook
+│   ├── builder.py             ← EPUB 3 builder
+│   ├── pdf_builder.py         ← PDF print builder
+│   ├── browser_pdf.py         ← Playwright PDF
+│   ├── theme.py               ← Génération CSS
+│   ├── validator.py           ← Validation EPUB/PDF
+│   └── ai_llm.py              ← Bridge LLM
+├── sigil                      ← CLI batch entry point
+├── start-editor.bat           ← Démarrage Windows
+├── start-editor.sh            ← Démarrage Linux/Mac
+└── KLEIA-UP-BOOK.md           ← Plan de delivery
+```

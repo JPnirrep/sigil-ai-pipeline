@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+.venv/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+
+# Editor data
+editor/.data/
+editor/templates/
+editor/frontend/dist/
+editor/frontend/node_modules/
+
+# VPS / local
+*.docx
+!editor/test_book.docx
+!editor/sandrina_test.docx
+
+# OS
+.DS_Store
+Thumbs.db
